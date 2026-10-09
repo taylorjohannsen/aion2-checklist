@@ -1,0 +1,15 @@
+{
+  "name": "aion2-checklist",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AION 2 Global daily/weekly checklist with character and item lookup",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "build:items": "node scripts/build-items.mjs",
+    "build:icons": "node scripts/fetch-icons.mjs"
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "updated": "2026-10-09",
+  "about": "Where-to-get-it info for the item lookup. Entries with an id attach to that item in items.json; entries with only a key (currencies, materials the index doesn't have) are listed on their own. Source types: shop, content, craft, gather, other. Prices and limits are community-reported and change with patches.",
+  "items": [
+    {
+      "key": "stigma-shard",
+      "name": "Stigma Shard",
+      "kind": "Material",
+      "aliases": ["stigma", "stigmas", "stigma shards"],
+      "summary": "Unlocks and upgrades stigma skills. Three shops sell it, and they're worth checking every week.",
+      "sources": [
+        { "type": "shop", "where": "Abyss Trade Shop", "cost": "10,000 Abyss Points, then 15,000, 20,000 and 25,000 (the price goes up after every 50)", "limit": "200 per character, 50 at each price", "note": "Level 45" },
+        { "type": "shop", "where": "Nightmare Trade Shop", "cost": "1,500 Phantasmal Fragments", "limit": "35 per character", "note": "Level 45" },
+        { "type": "shop", "where": "Festival Shop (Shugo Festival)", "cost": "300 Centuryroot Tokens", "limit": "35 per character" }
+      ],
+      "refs": ["https://gamerant.com/aion-2-unlock-stigma-shards/", "https://wikily.gg/aion-2/shops/festival-shop", "https://metabot.gg/en/aion-2/shops"]
+    },
+    {
+      "key": "daevanion-crystal",
+      "name": "Daevanion Crystal",
+      "kind": "Material",
+      "aliases": ["daevanion", "daevanion crystals", "azphel crystal"],
+      "summary": "Fills in your Daevanion boards. Sold by the same three shops as Stigma Shards.",
+      "sources": [
+        { "type": "shop", "where": "Festival Shop (Shugo Festival)", "cost": "50, 100, 200, then 400 Centuryroot Tokens (the price steps up as you buy)", "limit": "10, 10, 15 and 15 per character at each price" },
+        { "type": "shop", "where": "Nightmare Trade Shop", "cost": "300 Phantasmal Fragments", "limit": "50 per character" },
+        { "type": "shop", "where": "Abyss Trade Shop", "cost": "10,000 Abyss Points", "limit": "20 per character", "note": "Azphel Daevanion Crystal" },
+        { "type": "content", "where": "Sealed Dungeons and Strongholds" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://metabot.gg/en/aion-2/shops", "https://couga54.github.io/aion2-guides/en/week-1/"]
+    },
+    {
+      "key": "abyss-points",
+      "name": "Abyss Points",
+      "kind": "Currency",
+      "aliases": ["ap", "abyss point"],
+      "summary": "Spent in the Abyss Trade Shop on Stigma Shards, Daevanion Crystals, Abyssal Manastones and more.",
+      "sources": [
+        { "type": "content", "where": "Duty Quests", "cost": "1,000 each, 5 a day" },
+        { "type": "content", "where": "Command Quests", "note": "PvE ones from the city Command Merchant, PvP ones from the Abyss Command Merchant" },
+        { "type": "content", "where": "Abyss PvP and monsters in Reshanta" },
+        { "type": "content", "where": "Artifact Siege and Abyss Corridors", "note": "Corridors open at the Artifact for the side that captured it" },
+        { "type": "content", "where": "Spacetime Rift quests", "cost": "2,000 each" },
+        { "type": "content", "where": "Dimensional Invasion, Shugo Festival and Arena" },
+        { "type": "content", "where": "Sealed Dungeons, Strongholds, Supply Requests and attendance rewards" }
+      ],
+      "refs": ["https://gamerant.com/aion-2-unlock-stigma-shards/", "https://space4games.com/en/games-en/aion-2-abyss-points/", "https://metabot.gg/en/aion-2/guides/daily-weekly-checklist"]
+    },
+    {
+      "key": "phantasmal-fragment",
+      "name": "Phantasmal Fragment",
+      "kind": "Currency",
+      "aliases": ["phantasmal fragments", "nightmare currency", "pf"],
+      "summary": "Spent in the Nightmare Trade Shop.",
+      "sources": [
+        { "type": "content", "where": "Nightmare", "cost": "500 to 3,950 per clear, more on harder difficulties", "note": "2 charges a day, banking up to 14" }
+      ],
+      "refs": ["https://metabot.gg/en/aion-2/guides/daily-weekly-checklist"]
+    },
+    {
+      "key": "centuryroot-token",
+      "name": "Centuryroot Token",
+      "kind": "Currency",
+      "aliases": ["shugo coin", "shugo coins", "festival token", "festival shop"],
+      "summary": "The Shugo Festival's currency, spent in the Festival Shop.",
+      "sources": [
+        { "type": "content", "where": "Shugo Festival minigames", "note": "Every hour on the hour; 3 keys a day" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://gamerant.com/aion-2-unlock-stigma-shards/"]
+    },
+    {
+      "id": 512000014,
+      "name": "Odyle Energy",
+      "kind": "Usage Count Recharge Ticket",
+      "aliases": ["odyle", "energy", "od energy"],
+      "summary": "Opens the reward cube after Conquest (40), Transcendence (40) and Sanctuary (80). Always open the cube: skipping 10 in a week locks you out until reset.",
+      "sources": [
+        { "type": "other", "where": "Regenerates on its own", "cost": "15 every 3 hours (120 a day)", "limit": "Caps at 560, or 840 with a membership", "note": "Alts regenerate offline from level 22" },
+        { "type": "craft", "where": "Odyle Craft (Substance Morph)", "note": "Weekly limit" },
+        { "type": "shop", "where": "Membership shop", "note": "Weekly purchase" }
+      ],
+      "refs": ["https://metabot.gg/en/aion-2/guides/daily-weekly-checklist", "https://couga54.github.io/aion2-guides/en/weekly/"]
+    },
+    {
+      "id": 610610016,
+      "name": "Radiant Odyle",
+      "aliases": ["green odyle"],
+      "summary": "A crafting and Substance Morph material.",
+      "sources": [
+        { "type": "gather", "where": "Odyle nodes in the open world and dungeons" },
+        { "type": "shop", "where": "Festival Shop (Shugo Festival)", "cost": "1,000 Centuryroot Tokens", "limit": "3 per character, monthly", "note": "Sold as Radiant Odyle (Bound)" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://couga54.github.io/aion2-guides/en/week-1/"]
+    },
+    {
+      "id": 531351001,
+      "name": "Lesser Abyssal Manastone (Bound)",
+      "aliases": ["abyssal manastone", "manastone"],
+      "sources": [
+        { "type": "shop", "where": "Abyss Trade Shop", "cost": "1,000 Abyss Points", "limit": "50 per character, weekly" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/abyss-trade-shop"]
+    },
+    {
+      "id": 533551001,
+      "name": "Lesser Abyssal Soulstone (Bound)",
+      "aliases": ["abyssal soulstone", "soulstone"],
+      "sources": [
+        { "type": "shop", "where": "Abyss Trade Shop", "cost": "2,000 Abyss Points", "limit": "50 per character, weekly" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/abyss-trade-shop"]
+    },
+    {
+      "key": "soul-codex",
+      "name": "Soul Codex",
+      "kind": "Material",
+      "aliases": ["soul codex reset", "codex"],
+      "sources": [
+        { "type": "shop", "where": "Nightmare Trade Shop", "cost": "400 Phantasmal Fragments for 5", "limit": "5 per character, weekly" },
+        { "type": "shop", "where": "Nightmare Trade Shop: Soul Codex: Reset", "cost": "8,000 Phantasmal Fragments", "limit": "3 per character, weekly" },
+        { "type": "shop", "where": "Season Shop", "cost": "3,000 Oath Coins", "limit": "50 per account" },
+        { "type": "shop", "where": "Season Shop: Soul Codex: Reset", "cost": "20,000 Oath Coins", "limit": "5 per account" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/nightmare-trade-shop", "https://metabot.gg/en/aion-2/shops"]
+    },
+    {
+      "key": "soul-crystal",
+      "name": "Soul Crystal",
+      "kind": "Material",
+      "aliases": ["soul crystals"],
+      "sources": [
+        { "type": "shop", "where": "Festival Shop (Shugo Festival)", "cost": "50 Centuryroot Tokens for 100", "limit": "30 per character, monthly" },
+        { "type": "content", "where": "Duty Quests", "note": "Some duty quests reward them; worth picking first" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://www.keengamer.com/articles/guides/aion-2-daily-and-weekly-checklist-what-to-do-before-each-reset/"]
+    },
+    {
+      "key": "amplify-stone-fragment",
+      "name": "Amplify Stone Fragment (Unique)",
+      "kind": "Material",
+      "aliases": ["amplify fragment", "amplify stone"],
+      "sources": [
+        { "type": "shop", "where": "Nightmare Trade Shop", "cost": "500 Phantasmal Fragments" },
+        { "type": "content", "where": "Ascension Trial" }
+      ],
+      "refs": ["https://wikily.gg/aion-2/shops/nightmare-trade-shop", "https://game8.co/games/Aion-2/archives/629164"]
+    },
+    {
+      "key": "refining-stone",
+      "name": "Refining Stone",
+      "kind": "Material",
+      "aliases": ["refining stones", "expert's refining stone", "artisan's refining stone"],
+      "sources": [
+        { "type": "shop", "where": "Season Shop", "cost": "40 Oath Coins", "limit": "50 per account" },
+        { "type": "shop", "where": "Season Shop: Expert's Refining Stone", "cost": "400 Oath Coins", "limit": "30 per account" },
+        { "type": "shop", "where": "Season Shop: Artisan's Refining Stone", "cost": "4,000 Oath Coins", "limit": "20 per account" },
+        { "type": "content", "where": "Dimensional Invasion and Shugo Festival" }
+      ],
+      "refs": ["https://metabot.gg/en/aion-2/shops", "https://game8.co/games/Aion-2/archives/629164"]
+    },
+    {
+      "key": "enhance-stone",
+      "name": "Enhance Stone",
+      "kind": "Material",
+      "aliases": ["enhancement stone", "enhancement stones", "enhance stones"],
+      "summary": "Gear enhancement. Push weapon and accessories to +10 first; past +10 the 100% success rate goes away.",
+      "sources": [
+        { "type": "content", "where": "Daily Dungeon (Unknown Fissure)", "cost": "About 140,000 a week across 14 runs" },
+        { "type": "content", "where": "Ascension Trial", "note": "Run at your best item level, rewards scale with difficulty" },
+        { "type": "content", "where": "Duty Quests and Shugo Festival" }
+      ],
+      "refs": ["https://game8.co/games/Aion-2/archives/629164", "https://couga54.github.io/aion2-guides/en/week-1/"]
+    },
+    {
+      "key": "kinah",
+      "name": "Kinah",
+      "kind": "Currency",
+      "aliases": ["kina", "gold", "money"],
+      "sources": [
+        { "type": "content", "where": "Duty Quests", "cost": "50,000 each, 5 a day" }
+      ],
+      "refs": ["https://metabot.gg/en/aion-2/guides/daily-weekly-checklist"]
+    },
+    {
+      "key": "arcana",
+      "name": "Arcana",
+      "kind": "Equipment",
+      "aliases": ["arcana card", "blue arcana"],
+      "sources": [
+        { "type": "content", "where": "Transcendence", "note": "Blue arcana needs about 1,800 item level; around 1,500 you only get green" }
+      ],
+      "refs": ["https://couga54.github.io/aion2-guides/en/week-1/"]
+    }
+  ]
+}

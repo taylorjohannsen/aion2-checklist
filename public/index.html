@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://assets.playnccdn.com https://*.playnccdn.com https://profileimg.plaync.com; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <title>AION 2 Checklist</title>
+  <meta name="description" content="Daily and weekly checklist for AION 2 Global, with character lookup and where-to-get-it item search.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c1020">
+  <link rel="icon" href="/icons/favicon.png">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to checklist</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="/icons/odyle.webp" alt="" width="40" height="40">
+      <div>
+        <h1>AION 2 Checklist</h1>
+        <p class="muted small">Global servers</p>
+      </div>
+    </div>
+    <div class="timers" id="timers" aria-live="off"></div>
+  </header>
+
+  <section class="roster" id="roster" aria-label="Characters"></section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-checklist" data-tab="checklist" aria-controls="view-checklist" aria-selected="true">Checklist</button>
+    <button type="button" role="tab" id="tab-items" data-tab="items" aria-controls="view-items" aria-selected="false" tabindex="-1">Items</button>
+  </nav>
+
+  <main id="main">
+    <section id="view-checklist" role="tabpanel" aria-labelledby="tab-checklist"></section>
+    <section id="view-items" role="tabpanel" aria-labelledby="tab-items" hidden></section>
+  </main>
+
+  <footer class="footer">
+    <p id="reset-hint"></p>
+    <p class="footer-backup">
+      <span>Progress is saved in this browser only.</span>
+      <button type="button" class="link-button" id="export-backup">Export backup</button>
+      <label class="link-button file-button">Import backup<input type="file" id="import-backup" accept="application/json,.json"></label>
+    </p>
+    <p class="muted small">Fan-made and not affiliated with NCSOFT. AION 2 names, icons and character data belong to NCSOFT and come from its official site.</p>
+  </footer>
+
+  <dialog id="add-dialog" aria-labelledby="add-title">
+    <div class="dialog-head">
+      <h2 id="add-title">Add a character</h2>
+      <button type="button" class="icon-button" data-close aria-label="Close">×</button>
+    </div>
+    <form id="search-form" class="search-form" autocomplete="off">
+      <label class="field">
+        <span>Region</span>
+        <select name="region">
+          <option value="nae">NA East</option>
+          <option value="naw">NA West</option>
+          <option value="eu">Europe</option>
+          <option value="la">South America</option>
+          <option value="as">Asia</option>
+        </select>
+      </label>
+      <label class="field grow">
+        <span>Character name</span>
+        <input name="name" required maxlength="24" spellcheck="false" placeholder="e.g. Taeloria">
+      </label>
+      <button type="submit" class="button">Search</button>
+    </form>
+    <div id="search-results" class="search-results" aria-live="polite"></div>
+    <details id="manual-add" class="manual-add">
+      <summary>Can’t find it? Add a character by name only</summary>
+      <form id="manual-form" class="inline-form" autocomplete="off">
+        <label for="manual-name">Name</label>
+        <input id="manual-name" name="manualName" required maxlength="40">
+        <button type="submit" class="button small">Add</button>
+      </form>
+    </details>
+  </dialog>
+
+  <dialog id="char-dialog" aria-labelledby="char-title">
+    <div class="dialog-head">
+      <span></span>
+      <button type="button" class="icon-button" data-close aria-label="Close">×</button>
+    </div>
+    <div id="char-body"></div>
+  </dialog>
+
+  <dialog id="tasks-dialog" class="wide" aria-labelledby="tasks-title">
+    <div class="dialog-head">
+      <h2 id="tasks-title">Edit tasks</h2>
+      <button type="button" class="icon-button" data-close aria-label="Close">×</button>
+    </div>
+    <p class="muted small">Untick a task to hide it and change its count. This applies to every character in this browser.</p>
+    <div id="tasks-body"></div>
+    <div class="dialog-actions">
+      <button type="button" class="button ghost" id="restore-tasks">Restore default tasks</button>
+      <button type="button" class="button" data-close>Done</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
