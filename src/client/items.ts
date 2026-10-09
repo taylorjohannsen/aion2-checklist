@@ -244,10 +244,11 @@ export function initItems({ root, getState, commit }: {
   }
 
   function renderResults(): void {
+    const q = input.value;
+    // before the index guard: text typed while items.json is still loading should get its ×
+    clearButton.hidden = !q;
     const idx = index;
     if (!idx) return;
-    const q = input.value;
-    clearButton.hidden = !q;
     // an empty box shows nothing but whatever the visitor pinned
     if (!q.trim()) {
       const pinned = getState().items.pinned

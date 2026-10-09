@@ -15,8 +15,8 @@
     "watch": "tsc -p tsconfig.client.json --watch",
     "start": "npm run build && node dist/server.js",
     "serve": "node dist/server.js",
-    "build:items": "node dist/scripts/build-items.js",
-    "build:icons": "node dist/scripts/fetch-icons.js"
+    "build:items": "npm run build:server && node dist/scripts/build-items.js",
+    "build:icons": "npm run build:server && node dist/scripts/fetch-icons.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
