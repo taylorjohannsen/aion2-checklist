@@ -1,6 +1,24 @@
+import type { IconKey } from './icons.js';
+
+export type Period = 'daily' | 'weekly';
+
+export interface Task {
+  id: string;
+  name: string;
+  period: Period;
+  max: number;
+  icon: IconKey;
+  note?: string;
+}
+
+/** A task as the checklist renders it, with the visitor's overrides applied. */
+export interface ResolvedTask extends Task {
+  custom: boolean;
+}
+
 // The default checklist. Visitors can hide tasks, change counts and add their
 // own in "Edit tasks"; that's saved in their browser, not here.
-export const DEFAULT_TASKS = [
+export const DEFAULT_TASKS: Task[] = [
   { id: 'duty', name: 'Duty Quests', period: 'daily', max: 5, icon: 'pouch', note: 'Kinah and Abyss Points' },
   { id: 'nightmare', name: 'Nightmare', period: 'daily', max: 2, icon: 'nightmare', note: '2 charges a day, banks up to 14' },
   { id: 'shugo', name: 'Shugo Festival', period: 'daily', max: 3, icon: 'shugo', note: 'Every hour on the hour' },
@@ -15,7 +33,7 @@ export const DEFAULT_TASKS = [
   { id: 'corridors', name: 'Abyss Corridors', period: 'weekly', max: 1, icon: 'corridor', note: 'Open after your side wins an Artifact Siege' },
 ];
 
-export const PERIODS = [
+export const PERIODS: { id: Period; label: string }[] = [
   { id: 'daily', label: 'Daily' },
   { id: 'weekly', label: 'Weekly' },
 ];

@@ -1,3 +1,7 @@
 node_modules/
 scripts/.cache/
 *.log
+
+# build output: `npm run build` writes these from src/
+dist/
+public/js/

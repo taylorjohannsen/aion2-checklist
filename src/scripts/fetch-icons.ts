@@ -1,18 +1,19 @@
 #!/usr/bin/env node
-// Downloads the task icons listed in public/js/icons.js as public/icons/<key>.png,
+// Downloads the task icons listed in src/client/icons.ts as public/icons/<key>.png,
 // skipping any that already have a .webp. The CDN serves them at 256px, so follow
 // up with scripts/shrink-icons.py, which makes the 128px .webp the site uses.
 //
-//   node scripts/fetch-icons.mjs [--force]
+//   npm run build:icons [-- --force]
 //   python scripts/shrink-icons.py
 
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ICONS, ICON_CDN } from '../public/js/icons.js';
+import { ICONS, ICON_CDN } from '../client/icons.js';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// this runs compiled, from dist/scripts/, so the project root is two levels up
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const outDir = path.join(root, 'public', 'icons');
 const force = process.argv.includes('--force');
 

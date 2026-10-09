@@ -1,33 +1,42 @@
 import { h, clear, $, toast, number, timeAgo } from './dom.js';
 import * as store from './store.js';
-import { api } from './api.js';
+import type { Character, Tab } from './store.js';
+import { api, type RegionId, type SearchHit } from './api.js';
 import { ICONS, iconURL } from './icons.js';
-import { PERIODS, MAX_COUNT } from './tasks.js';
+import { PERIODS, MAX_COUNT, type Period, type ResolvedTask } from './tasks.js';
 import { EVENTS, eventStatus, formatDuration, formatLocalTime, nextDailyReset, nextWeeklyReset } from './time.js';
 import { initItems } from './items.js';
 
 let state = store.loadState();
 let storageWarned = false;
 
-function commit() {
+function commit(): void {
   if (!store.saveState(state) && !storageWarned) {
     storageWarned = true;
     toast('This browser is blocking storage, so progress won’t be kept after you close the tab.');
   }
 }
 
-const regionLabel = (id) => store.REGIONS.find((r) => r.id === id)?.label || '';
-const active = () => store.activeCharacter(state);
+const regionLabel = (id: RegionId): string => store.REGIONS.find((r) => r.id === id)?.label || '';
+const active = (): Character | undefined => store.activeCharacter(state);
+const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
+// Form controls by name. The markup is ours, so a missing control is a bug, not input.
+function control<T extends HTMLInputElement | HTMLSelectElement>(form: HTMLFormElement, name: string): T {
+  const el = form.elements.namedItem(name);
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLSelectElement)) throw new Error(`Form has no ${name} control`);
+  return el as T;
+}
 
 // ---------- header timers ----------
 
-const countdowns = [
+const countdowns: { id: Period; label: string; next: (now?: number) => number }[] = [
   { id: 'daily', label: 'Daily reset', next: nextDailyReset },
   { id: 'weekly', label: 'Weekly reset', next: nextWeeklyReset },
 ];
 
-function buildTimers() {
-  const timer = (id, label, kind) =>
+function buildTimers(): void {
+  const timer = (id: string, label: string, kind: 'reset' | 'event') =>
     h('div', { class: `timer timer-${kind}`, id: `timer-${id}` },
       h('span', { class: 'timer-label' }, label),
       h('span', { class: 'timer-value' }, '…'));
@@ -36,7 +45,7 @@ function buildTimers() {
     h('div', { class: 'timer-group', 'aria-label': 'Events' }, EVENTS.map((e) => timer(e.id, e.name, 'event'))));
 }
 
-function tickTimers(now) {
+function tickTimers(now: number): void {
   for (const c of countdowns) {
     const at = c.next(now);
     const el = $(`#timer-${c.id}`);
@@ -52,8 +61,10 @@ function tickTimers(now) {
       : `in ${formatDuration(status.at - now)}`;
     el.title = status.open ? `${event.name} closes ${formatLocalTime(status.at)}` : `${event.name} starts ${formatLocalTime(status.at)} your time`;
   }
-  for (const el of document.querySelectorAll('[data-countdown]')) {
-    const at = countdowns.find((c) => c.id === el.dataset.countdown).next(now);
+  for (const el of document.querySelectorAll<HTMLElement>('[data-countdown]')) {
+    const countdown = countdowns.find((c) => c.id === el.dataset['countdown']);
+    if (!countdown) continue;
+    const at = countdown.next(now);
     el.textContent = `Resets in ${formatDuration(at - now)}`;
     el.title = formatLocalTime(at);
   }
@@ -61,7 +72,7 @@ function tickTimers(now) {
 
 // ---------- characters ----------
 
-function avatar(c, size = '') {
+function avatar(c: { name?: string; portrait?: string | undefined }, size = ''): HTMLElement {
   const initial = h('span', { class: `avatar avatar-initial ${size}`, 'aria-hidden': 'true' }, (c.name || '?').slice(0, 1).toUpperCase());
   if (!c.portrait) return initial;
   return h('img', {
@@ -70,19 +81,20 @@ function avatar(c, size = '') {
     alt: '',
     loading: 'lazy',
     decoding: 'async',
-    onerror: (e) => e.currentTarget.replaceWith(initial),
+    onerror: (e: Event) => (e.currentTarget as Element).replaceWith(initial),
   });
 }
 
-const characterMeta = (c) => [c.className, c.level ? `Lv ${c.level}` : null, c.serverName].filter(Boolean).join(' · ');
+const characterMeta = (c: Character): string =>
+  [c.className, c.level ? `Lv ${c.level}` : null, c.serverName].filter(Boolean).join(' · ');
 
-function miniBar(label, { done, total }) {
+function miniBar(label: string, { done, total }: { done: number; total: number }): HTMLSpanElement {
   return h('span', { class: 'mini', title: `${label}: ${done} of ${total} done` },
     h('span', { class: 'mini-label' }, label.slice(0, 1)),
     h('span', { class: 'mini-track' }, h('span', { class: 'mini-fill', style: { '--p': total ? done / total : 0 } })));
 }
 
-function renderRoster() {
+function renderRoster(): void {
   clear($('#roster'),
     state.characters.map((c) => {
       const isActive = c.id === state.activeId;
@@ -113,14 +125,14 @@ function renderRoster() {
       h('span', {}, 'Add character')));
 }
 
-function selectCharacter(id) {
+function selectCharacter(id: string): void {
   state.activeId = id;
   commit();
   renderRoster();
   renderChecklist();
 }
 
-async function refreshCharacter(id, { quiet = false } = {}) {
+async function refreshCharacter(id: string, { quiet = false } = {}): Promise<void> {
   const c = state.characters.find((x) => x.id === id);
   if (!c?.characterId) return;
   try {
@@ -131,32 +143,34 @@ async function refreshCharacter(id, { quiet = false } = {}) {
     if (charDialogId === id) renderCharacterDialog();
     if (!quiet) toast(`${info.name} is up to date`);
   } catch (err) {
-    if (!quiet) toast(err.message);
+    if (!quiet) toast(errorMessage(err));
   }
 }
 
 // ---------- add character dialog ----------
 
-let linkTarget = null; // set when linking an existing hand-added character to NCSOFT
+let linkTarget: string | null = null; // set when linking an existing hand-added character to NCSOFT
 let searchToken = 0;
 
-function openAddDialog({ link = null, name = '' } = {}) {
+function openAddDialog({ link = null, name = '' }: { link?: string | null; name?: string } = {}): void {
   linkTarget = link;
-  const form = $('#search-form');
-  form.region.value = state.ui.region;
-  form.name.value = name;
+  const form = $<HTMLFormElement>('#search-form');
+  control(form, 'region').value = state.ui.region;
+  const nameInput = control(form, 'name');
+  nameInput.value = name;
   $('#add-title').textContent = link ? 'Link to NCSOFT' : 'Add a character';
   $('#manual-add').hidden = Boolean(link);
   clear($('#search-results'));
-  $('#add-dialog').showModal();
-  form.name.focus();
+  $<HTMLDialogElement>('#add-dialog').showModal();
+  nameInput.focus();
 }
 
-async function onSearch(e) {
+async function onSearch(e: Event): Promise<void> {
   e.preventDefault();
-  const form = e.currentTarget;
-  const region = form.region.value;
-  const name = form.name.value.trim();
+  const form = e.currentTarget as HTMLFormElement;
+  const picked = control<HTMLSelectElement>(form, 'region').value;
+  const region = store.REGIONS.find((r) => r.id === picked)?.id ?? state.ui.region;
+  const name = control(form, 'name').value.trim();
   if (!name) return;
   state.ui.region = region;
   commit();
@@ -175,11 +189,11 @@ async function onSearch(e) {
       h('ul', { class: 'search-list' }, list.map(searchRow)),
       total > list.length && h('p', { class: 'muted small' }, `Showing ${list.length} of ${total}. Type more of the name to narrow it down.`));
   } catch (err) {
-    if (token === searchToken) clear(results, h('p', { class: 'error' }, err.message));
+    if (token === searchToken) clear(results, h('p', { class: 'error' }, errorMessage(err)));
   }
 }
 
-function searchRow(r) {
+function searchRow(r: SearchHit): HTMLLIElement {
   const already = state.characters.some((c) => store.sameCharacter(c, r));
   return h('li', { class: 'search-row' },
     avatar(r),
@@ -194,37 +208,41 @@ function searchRow(r) {
     }, already && !linkTarget ? 'Added' : linkTarget ? 'Link' : 'Add'));
 }
 
-function pickCharacter(r) {
+function pickCharacter(r: SearchHit): void {
   const info = { ...r, updatedAt: Date.now() };
-  let character;
-  if (linkTarget && state.characters.some((c) => c.id === linkTarget)) {
-    const duplicate = state.characters.find((c) => c.id !== linkTarget && store.sameCharacter(c, r));
+  const target = linkTarget;
+  let character: Character | null;
+  if (target && state.characters.some((c) => c.id === target)) {
+    const duplicate = state.characters.find((c) => c.id !== target && store.sameCharacter(c, r));
     if (duplicate) {
       toast(`${duplicate.name} is already in your list`);
       return;
     }
-    character = store.updateCharacter(state, linkTarget, info);
-    state.activeId = character.id;
+    character = store.updateCharacter(state, target, info);
+    if (character) state.activeId = character.id;
   } else {
     character = store.addCharacter(state, info);
   }
+  if (!character) return;
   commit();
-  $('#add-dialog').close();
-  if ($('#char-dialog').open) $('#char-dialog').close();
+  $<HTMLDialogElement>('#add-dialog').close();
+  const charDialog = $<HTMLDialogElement>('#char-dialog');
+  if (charDialog.open) charDialog.close();
   renderRoster();
   renderChecklist();
   toast(`${character.name} added`);
-  refreshCharacter(character.id, { quiet: true });
+  void refreshCharacter(character.id, { quiet: true });
 }
 
-function onManualAdd(e) {
+function onManualAdd(e: Event): void {
   e.preventDefault();
-  const name = e.currentTarget.manualName.value.trim();
+  const form = e.currentTarget as HTMLFormElement;
+  const name = control(form, 'manualName').value.trim();
   if (!name) return;
   const character = store.addCharacter(state, { name, manual: true });
   commit();
-  e.currentTarget.reset();
-  $('#add-dialog').close();
+  form.reset();
+  $<HTMLDialogElement>('#add-dialog').close();
   renderRoster();
   renderChecklist();
   toast(`${character.name} added`);
@@ -232,22 +250,22 @@ function onManualAdd(e) {
 
 // ---------- manage character dialog ----------
 
-let charDialogId = null;
+let charDialogId: string | null = null;
 
-function openCharacterDialog(id) {
+function openCharacterDialog(id: string): void {
   charDialogId = id;
   renderCharacterDialog();
-  $('#char-dialog').showModal();
+  $<HTMLDialogElement>('#char-dialog').showModal();
 }
 
-function renderCharacterDialog() {
+function renderCharacterDialog(): void {
   const c = state.characters.find((x) => x.id === charDialogId);
   if (!c) {
-    $('#char-dialog').close();
+    $<HTMLDialogElement>('#char-dialog').close();
     return;
   }
   const index = state.characters.indexOf(c);
-  const stat = (label, value) => h('div', { class: 'stat' }, h('dt', {}, label), h('dd', {}, value));
+  const stat = (label: string, value: string | number) => h('div', { class: 'stat' }, h('dt', {}, label), h('dd', {}, value));
 
   clear($('#char-body'),
     h('div', { class: 'char-detail' },
@@ -261,7 +279,7 @@ function renderCharacterDialog() {
       stat('Item Level', number(c.itemLevel)),
       stat('Level', c.level ?? '—')),
     c.characterId && c.updatedAt && h('p', { class: 'muted small' }, `From NCSOFT, updated ${timeAgo(c.updatedAt)}`),
-    !c.characterId && h('form', { class: 'inline-form', onsubmit: (e) => renameCharacter(e, c.id) },
+    !c.characterId && h('form', { class: 'inline-form', onsubmit: (e: Event) => renameCharacter(e, c.id) },
       h('label', { for: 'rename-input' }, 'Name'),
       h('input', { id: 'rename-input', name: 'charName', value: c.name, maxlength: 40, required: true, autocomplete: 'off' }),
       h('button', { class: 'button small', type: 'submit' }, 'Save')),
@@ -274,9 +292,9 @@ function renderCharacterDialog() {
       h('button', { class: 'button danger', type: 'button', onclick: () => removeCharacter(c.id) }, 'Remove')));
 }
 
-function renameCharacter(e, id) {
+function renameCharacter(e: Event, id: string): void {
   e.preventDefault();
-  const name = e.currentTarget.charName.value.trim();
+  const name = control(e.currentTarget as HTMLFormElement, 'charName').value.trim();
   if (!name) return;
   store.updateCharacter(state, id, { name });
   commit();
@@ -285,19 +303,20 @@ function renameCharacter(e, id) {
   renderCharacterDialog();
 }
 
-function moveCharacter(id, delta) {
+function moveCharacter(id: string, delta: number): void {
   store.moveCharacter(state, id, delta);
   commit();
   renderRoster();
   renderCharacterDialog();
 }
 
-function removeCharacter(id) {
-  const before = structuredClone(state);
+function removeCharacter(id: string): void {
   const c = state.characters.find((x) => x.id === id);
+  if (!c) return;
+  const before = structuredClone(state);
   store.removeCharacter(state, id);
   commit();
-  $('#char-dialog').close();
+  $<HTMLDialogElement>('#char-dialog').close();
   renderRoster();
   renderChecklist();
   toast(`Removed ${c.name}`, {
@@ -312,12 +331,20 @@ function removeCharacter(id) {
 
 // ---------- checklist ----------
 
-const cards = new Map(); // task id -> card element, for the active character
+const cards = new Map<string, { card: HTMLElement; task: ResolvedTask }>(); // for the active character
 
-function renderChecklist() {
+function renderChecklist(): void {
   const c = active();
-  const tasks = store.visibleTasks(state);
   cards.clear();
+  if (!c) {
+    clear($('#view-checklist'),
+      h('div', { class: 'no-character' },
+        h('h2', {}, 'Add a character to start'),
+        h('p', { class: 'muted' }, 'Look yours up by name, or add one by hand. Each character keeps its own progress in this browser.'),
+        h('button', { class: 'button', type: 'button', onclick: () => openAddDialog() }, 'Add character')));
+    return;
+  }
+  const tasks = store.visibleTasks(state);
   clear($('#view-checklist'),
     h('div', { class: 'checklist-head' },
       h('h2', { class: 'checklist-title' }, c.name, h('span', { class: 'muted' }, '’s checklist')),
@@ -328,10 +355,9 @@ function renderChecklist() {
         h('header', { class: 'period-head' },
           h('h3', { id: `period-${period.id}` }, period.label),
           h('span', { class: 'period-count', dataset: { summary: period.id } }),
-          h('span', { class: 'period-reset muted', dataset: { countdown: period.id } }),
-          list.length > 0 && h('button', { class: 'link-button', type: 'button', onclick: () => clearPeriod(period) }, 'Clear')),
+          h('span', { class: 'period-reset muted', dataset: { countdown: period.id } })),
         list.length
-          ? h('div', { class: 'task-grid' }, list.map((task) => taskCard(task)))
+          ? h('div', { class: 'task-grid' }, list.map((task) => taskCard(c, task)))
           : h('p', { class: 'empty muted' }, 'Nothing here. Add tasks with Edit tasks.'));
     }));
   updateSummaries();
@@ -340,7 +366,7 @@ function renderChecklist() {
 
 // Every task is a single checkbox: done or not. The stored count is still 0..max,
 // so ticking a task fills it and backups made before this change still read right.
-function taskCard(task) {
+function taskCard(c: Character, task: ResolvedTask): HTMLElement {
   const card = h('article', { class: 'task' });
   const main = h('button', {
     class: 'task-main',
@@ -357,85 +383,72 @@ function taskCard(task) {
   const box = h('button', { class: 'task-toggle', type: 'button', tabindex: '-1', 'aria-hidden': 'true', onclick: () => toggle(task) });
   card.append(main, h('div', { class: 'task-progress' }, box));
   cards.set(task.id, { card, task });
-  refreshCard(task.id);
+  refreshCard(c, task.id);
   return card;
 }
 
-function refreshCard(taskId) {
+function refreshCard(c: Character, taskId: string): void {
   const entry = cards.get(taskId);
   if (!entry) return;
   const { card, task } = entry;
-  const done = store.getCount(state, active().id, task) >= task.max;
+  const done = store.getCount(state, c.id, task) >= task.max;
   card.classList.toggle('is-done', done);
   const main = $('.task-main', card);
   main.setAttribute('aria-pressed', String(done));
   main.setAttribute('aria-label', `${task.name}${task.max > 1 ? `, ${task.max} times` : ''}${done ? ', done. Click to undo.' : '. Click to mark done.'}`);
 }
 
-const toggle = (task) => set(task, store.getCount(state, active().id, task) >= task.max ? 0 : task.max);
-
-function set(task, value) {
+function toggle(task: ResolvedTask): void {
   const c = active();
+  if (!c) return;
+  set(c, task, store.getCount(state, c.id, task) >= task.max ? 0 : task.max);
+}
+
+function set(c: Character, task: ResolvedTask, value: number): void {
   const before = store.periodSummary(state, c.id, task.period);
   store.setCount(state, c.id, task, Math.min(MAX_COUNT, value));
   commit();
-  refreshCard(task.id);
+  refreshCard(c, task.id);
   updateSummaries();
   renderRoster();
   const after = store.periodSummary(state, c.id, task.period);
   if (after.total && after.done === after.total && before.done < after.total) {
-    const label = PERIODS.find((p) => p.id === task.period).label.toLowerCase();
+    const label = PERIODS.find((p) => p.id === task.period)?.label.toLowerCase() ?? task.period;
     toast(`All ${label} tasks done for ${c.name}`);
   }
 }
 
-function updateSummaries() {
+function updateSummaries(): void {
   const c = active();
-  for (const el of document.querySelectorAll('[data-summary]')) {
-    const { done, total } = store.periodSummary(state, c.id, el.dataset.summary);
+  if (!c) return;
+  for (const el of document.querySelectorAll<HTMLElement>('[data-summary]')) {
+    const period = PERIODS.find((p) => p.id === el.dataset['summary'])?.id;
+    if (!period) continue;
+    const { done, total } = store.periodSummary(state, c.id, period);
     el.textContent = total ? `${done} of ${total} done` : '';
     el.classList.toggle('is-complete', total > 0 && done === total);
   }
 }
 
-function clearPeriod(period) {
-  const c = active();
-  const progress = store.progressFor(state, c.id);
-  const snapshot = { ...progress.counts };
-  for (const task of store.allTasks(state).filter((t) => t.period === period.id)) delete progress.counts[task.id];
-  commit();
-  renderChecklist();
-  renderRoster();
-  toast(`Cleared ${period.label.toLowerCase()} tasks for ${c.name}`, {
-    label: 'Undo',
-    run: () => {
-      store.progressFor(state, c.id).counts = snapshot;
-      commit();
-      renderChecklist();
-      renderRoster();
-    },
-  });
-}
-
 // ---------- edit tasks dialog ----------
 
-function openTasksDialog() {
+function openTasksDialog(): void {
   renderTasksDialog();
-  $('#tasks-dialog').showModal();
+  $<HTMLDialogElement>('#tasks-dialog').showModal();
 }
 
-function renderTasksDialog() {
+function renderTasksDialog(): void {
   const tasks = store.allTasks(state);
-  const row = (task) => {
+  const row = (task: ResolvedTask) => {
     const hidden = state.tasks.hidden.includes(task.id);
     return h('li', { class: `edit-row${hidden ? ' is-hidden' : ''}` },
       h('input', {
         type: 'checkbox',
         id: `show-${task.id}`,
         checked: !hidden,
-        onchange: (e) => {
+        onchange: (e: Event) => {
           state.tasks.hidden = state.tasks.hidden.filter((id) => id !== task.id);
-          if (!e.currentTarget.checked) state.tasks.hidden.push(task.id);
+          if (!(e.currentTarget as HTMLInputElement).checked) state.tasks.hidden.push(task.id);
           saveTasks();
         },
       }),
@@ -448,9 +461,10 @@ function renderTasksDialog() {
         max: MAX_COUNT,
         value: task.max,
         'aria-label': `${task.name} count`,
-        onchange: (e) => {
-          const value = Math.max(1, Math.min(MAX_COUNT, Number.parseInt(e.currentTarget.value, 10) || 1));
-          if (task.custom) state.tasks.custom.find((t) => t.id === task.id).max = value;
+        onchange: (e: Event) => {
+          const value = Math.max(1, Math.min(MAX_COUNT, Number.parseInt((e.currentTarget as HTMLInputElement).value, 10) || 1));
+          const custom = task.custom ? state.tasks.custom.find((t) => t.id === task.id) : undefined;
+          if (custom) custom.max = value;
           else state.tasks.max[task.id] = value;
           saveTasks();
         },
@@ -488,28 +502,30 @@ function renderTasksDialog() {
       h('button', { class: 'button', type: 'submit' }, 'Add task')));
 }
 
-function onAddTask(e) {
+function onAddTask(e: Event): void {
   e.preventDefault();
-  const form = e.currentTarget;
+  const form = e.currentTarget as HTMLFormElement;
+  // the icon choices share a name, so they come back as a RadioNodeList
+  const icon = form.elements.namedItem('taskIcon');
   const task = store.addCustomTask(state, {
-    name: form.taskName.value.trim(),
-    period: form.taskPeriod.value,
-    max: Number.parseInt(form.taskMax.value, 10) || 1,
-    icon: form.taskIcon.value,
+    name: control(form, 'taskName').value.trim(),
+    period: control<HTMLSelectElement>(form, 'taskPeriod').value,
+    max: Number.parseInt(control(form, 'taskMax').value, 10) || 1,
+    icon: icon instanceof RadioNodeList ? icon.value : '',
   });
   if (!task) return;
   saveTasks();
   toast(`Added ${task.name}`);
 }
 
-function saveTasks() {
+function saveTasks(): void {
   commit();
   renderTasksDialog();
   renderChecklist();
   renderRoster();
 }
 
-function restoreDefaultTasks() {
+function restoreDefaultTasks(): void {
   const before = structuredClone(state.tasks);
   state.tasks = { hidden: [], max: {}, custom: state.tasks.custom };
   saveTasks();
@@ -524,7 +540,7 @@ function restoreDefaultTasks() {
 
 // ---------- backup ----------
 
-function exportBackup() {
+function exportBackup(): void {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const a = h('a', { href: URL.createObjectURL(blob), download: `aion2-checklist-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(a);
@@ -533,9 +549,10 @@ function exportBackup() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-async function importBackup(e) {
-  const file = e.currentTarget.files[0];
-  e.currentTarget.value = '';
+async function importBackup(e: Event): Promise<void> {
+  const picker = e.currentTarget as HTMLInputElement;
+  const file = picker.files?.[0];
+  picker.value = '';
   if (!file) return;
   try {
     const imported = store.normalize(JSON.parse(await file.text()));
@@ -552,7 +569,7 @@ async function importBackup(e) {
       },
     });
   } catch (err) {
-    toast(err instanceof SyntaxError ? 'That file isn’t valid JSON' : err.message);
+    toast(err instanceof SyntaxError ? 'That file isn’t valid JSON' : errorMessage(err));
   }
 }
 
@@ -564,25 +581,27 @@ const items = initItems({
   commit,
 });
 
-function showTab(tab, { updateHash = true } = {}) {
+const asTab = (value: string | undefined): Tab => (value === 'items' ? 'items' : 'checklist');
+
+function showTab(tab: Tab, { updateHash = true } = {}): void {
   state.ui.tab = tab;
   commit();
-  for (const button of document.querySelectorAll('[role="tab"]')) {
-    const selected = button.dataset.tab === tab;
+  for (const button of document.querySelectorAll<HTMLElement>('[role="tab"]')) {
+    const selected = button.dataset['tab'] === tab;
     button.setAttribute('aria-selected', String(selected));
     button.tabIndex = selected ? 0 : -1;
   }
   $('#view-checklist').hidden = tab !== 'checklist';
   $('#view-items').hidden = tab !== 'items';
-  if (tab === 'items') items.show();
+  if (tab === 'items') void items.show();
   if (updateHash) history.replaceState(null, '', tab === 'items' ? '#items' : location.pathname + location.search);
 }
 
-function route() {
-  const match = location.hash.match(/^#item\/(.+)$/);
-  if (match) {
+function route(): void {
+  const key = location.hash.match(/^#item\/(.+)$/)?.[1];
+  if (key) {
     showTab('items', { updateHash: false });
-    items.open(decodeURIComponent(match[1]));
+    void items.open(decodeURIComponent(key));
   } else if (location.hash === '#items') {
     showTab('items', { updateHash: false });
   } else if (location.hash === '#checklist') {
@@ -592,13 +611,13 @@ function route() {
 
 // ---------- startup ----------
 
-function renderAll() {
+function renderAll(): void {
   renderRoster();
   renderChecklist();
   showTab(state.ui.tab, { updateHash: false });
 }
 
-function tick() {
+function tick(): void {
   const now = Date.now();
   if (store.rolloverAll(state, now)) {
     commit();
@@ -609,7 +628,7 @@ function tick() {
   tickTimers(now);
 }
 
-function wireDialogs() {
+function wireDialogs(): void {
   for (const dialog of document.querySelectorAll('dialog')) {
     // a click on the backdrop lands on the dialog element itself
     dialog.addEventListener('click', (e) => {
@@ -617,7 +636,7 @@ function wireDialogs() {
     });
   }
   for (const button of document.querySelectorAll('[data-close]')) {
-    button.addEventListener('click', () => button.closest('dialog').close());
+    button.addEventListener('click', () => button.closest('dialog')?.close());
   }
   $('#char-dialog').addEventListener('close', () => (charDialogId = null));
   $('#search-form').addEventListener('submit', onSearch);
@@ -625,15 +644,16 @@ function wireDialogs() {
   $('#restore-tasks').addEventListener('click', restoreDefaultTasks);
 }
 
-function wireTabs() {
-  const tabs = [...document.querySelectorAll('[role="tab"]')];
+function wireTabs(): void {
+  const tabs = [...document.querySelectorAll<HTMLElement>('[role="tab"]')];
   for (const tab of tabs) {
-    tab.addEventListener('click', () => showTab(tab.dataset.tab));
+    tab.addEventListener('click', () => showTab(asTab(tab.dataset['tab'])));
     tab.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       const next = tabs[(tabs.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      if (!next) return;
       next.focus();
-      showTab(next.dataset.tab);
+      showTab(asTab(next.dataset['tab']));
     });
   }
 }

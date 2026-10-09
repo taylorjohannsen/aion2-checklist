@@ -8,8 +8,18 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node server.js",
-    "build:items": "node scripts/build-items.mjs",
-    "build:icons": "node scripts/fetch-icons.mjs"
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "tsc -p tsconfig.client.json",
+    "build:server": "tsc -p tsconfig.server.json",
+    "typecheck": "tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "watch": "tsc -p tsconfig.client.json --watch",
+    "start": "npm run build && node dist/server.js",
+    "serve": "node dist/server.js",
+    "build:items": "node dist/scripts/build-items.js",
+    "build:icons": "node dist/scripts/fetch-icons.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
   }
 }

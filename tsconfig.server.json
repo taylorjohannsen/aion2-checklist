@@ -1,0 +1,11 @@
+{
+  // The relay and the data-build scripts. Node 18+, no DOM.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": ["src/server.ts", "src/scripts/**/*.ts"]
+}

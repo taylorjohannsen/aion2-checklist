@@ -1,0 +1,13 @@
+{
+  // Browser code. Emits plain ES modules into public/js, which nginx serves as-is.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "rootDir": "src/client",
+    "outDir": "public/js",
+    // nginx serves only public/, so carry the TypeScript inside the maps for devtools
+    "inlineSources": true,
+    "types": []
+  },
+  "include": ["src/client/**/*.ts"]
+}

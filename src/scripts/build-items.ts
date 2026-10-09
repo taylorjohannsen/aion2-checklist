@@ -9,14 +9,15 @@
 // Every response is cached under scripts/.cache, so a rerun only asks NC for
 // what it hasn't seen. Pass --refresh to refetch everything.
 //
-//   node scripts/build-items.mjs [--refresh]
+//   npm run build:items [-- --refresh]
 
 import { mkdir, readFile, writeFile, appendFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// this runs compiled, from dist/scripts/, so the project root is two levels up
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const cacheDir = path.join(root, 'scripts', '.cache');
 const catalogFile = path.join(cacheDir, 'tw-catalog.json');
 const globalFile = path.join(cacheDir, 'global-items.ndjson');
@@ -41,6 +42,36 @@ const WORKERS = 3;
 
 const refresh = process.argv.includes('--refresh');
 
+/** One page of Taiwan's dictionary search. */
+interface TwPage {
+  contents: { id: number; image?: string }[];
+  pagination: { lastPage: number; total: number };
+}
+
+/** Global's item record; only the fields the index keeps. Unknown ids come back with id 0. */
+interface GlobalItemResponse {
+  id: number;
+  name?: string;
+  grade?: string;
+  categoryName?: string;
+  icon?: string;
+}
+
+interface CatalogRow {
+  id: number;
+  category: string;
+  icon: string;
+}
+
+interface GlobalItem {
+  name: string | undefined;
+  grade: string | undefined;
+  category: string | undefined;
+  icon: string;
+}
+
+type IndexTuple = [id: number, name: string, grade: string, category: string, icon: string];
+
 let nextSlot = 0;
 async function rateLimit() {
   const now = Date.now();
@@ -49,9 +80,9 @@ async function rateLimit() {
   if (wait) await sleep(wait);
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function getJSON(url, tries = 5) {
+async function getJSON<T>(url: string, tries = 5): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     await rateLimit();
     try {
@@ -60,7 +91,7 @@ async function getJSON(url, tries = 5) {
         signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-      return await res.json();
+      return (await res.json()) as T;
     } catch (err) {
       if (attempt >= tries) throw err;
       await sleep(1000 * 2 ** attempt);
@@ -68,16 +99,16 @@ async function getJSON(url, tries = 5) {
   }
 }
 
-const iconFile = (url) => (url ? String(url).replace(ICON_BASE, '') : '');
+const iconFile = (url: unknown): string => (url ? String(url).replace(ICON_BASE, '') : '');
 
-async function loadCatalog() {
-  if (!refresh && existsSync(catalogFile)) return JSON.parse(await readFile(catalogFile, 'utf8'));
+async function loadCatalog(): Promise<CatalogRow[]> {
+  if (!refresh && existsSync(catalogFile)) return JSON.parse(await readFile(catalogFile, 'utf8')) as CatalogRow[];
 
-  const rows = new Map();
+  const rows = new Map<number, CatalogRow>();
   for (const category of CATEGORIES) {
     let total = 0;
     for (let page = 1, lastPage = 1; page <= lastPage; page++) {
-      const body = await getJSON(`${TW_SEARCH}?category1=${category}&page=${page}&size=${PAGE_SIZE}`);
+      const body = await getJSON<TwPage>(`${TW_SEARCH}?category1=${category}&page=${page}&size=${PAGE_SIZE}`);
       lastPage = body.pagination.lastPage;
       total = body.pagination.total;
       for (const item of body.contents) rows.set(item.id, { id: item.id, category, icon: iconFile(item.image) });
@@ -90,25 +121,25 @@ async function loadCatalog() {
   return catalog;
 }
 
-async function loadGlobalCache() {
-  const seen = new Map();
+async function loadGlobalCache(): Promise<Map<number, GlobalItem | null>> {
+  const seen = new Map<number, GlobalItem | null>();
   if (refresh) await rm(globalFile, { force: true });
   if (!existsSync(globalFile)) return seen;
   for (const line of (await readFile(globalFile, 'utf8')).split('\n')) {
     if (!line) continue;
-    const row = JSON.parse(line);
+    const row = JSON.parse(line) as { id: number; item: GlobalItem | null };
     seen.set(row.id, row.item);
   }
   return seen;
 }
 
-async function sourcedIds() {
+async function sourcedIds(): Promise<number[]> {
   if (!existsSync(sourcesFile)) return [];
-  const { items = [] } = JSON.parse(await readFile(sourcesFile, 'utf8'));
-  return items.map((entry) => entry.id).filter(Number.isInteger);
+  const { items = [] } = JSON.parse(await readFile(sourcesFile, 'utf8')) as { items?: { id?: unknown }[] };
+  return items.map((entry) => entry.id).filter((id): id is number => Number.isInteger(id));
 }
 
-async function main() {
+async function main(): Promise<void> {
   await mkdir(cacheDir, { recursive: true });
 
   const catalog = await loadCatalog();
@@ -128,9 +159,10 @@ async function main() {
   async function worker() {
     while (cursor < todo.length) {
       const id = todo[cursor++];
-      const body = await getJSON(`${GLOBAL_ITEM}?id=${id}&enchantLevel=0&lang=en-US&region=nae`);
+      if (id === undefined) break;
+      const body = await getJSON<GlobalItemResponse>(`${GLOBAL_ITEM}?id=${id}&enchantLevel=0&lang=en-US&region=nae`);
       // Global answers an unknown ID with 200 and id 0
-      const item = body && body.id ? {
+      const item: GlobalItem | null = body && body.id ? {
         name: body.name,
         grade: body.grade,
         category: body.categoryName,
@@ -146,7 +178,7 @@ async function main() {
   }
   await Promise.all(Array.from({ length: WORKERS }, worker));
 
-  const rows = [];
+  const rows: IndexTuple[] = [];
   for (const id of ids) {
     const item = cache.get(id);
     if (item?.name) rows.push([id, item.name, item.grade || '', item.category || '', item.icon || '']);
@@ -162,7 +194,7 @@ async function main() {
   console.log(`wrote ${rows.length} items to ${path.relative(root, outFile)}`);
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error(err);
   process.exit(1);
 });

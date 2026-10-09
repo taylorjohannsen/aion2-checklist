@@ -1,4 +1,4 @@
-"""Shrinks the PNGs fetch-icons.mjs downloads into 128px WebP, plus a 64px favicon.
+"""Shrinks the PNGs `npm run build:icons` downloads into 128px WebP, plus a 64px favicon.
 
     pip install pillow
     python scripts/shrink-icons.py
