@@ -6,6 +6,13 @@
 // Global item endpoint. Taiwan's gear doesn't exist on Global, so equipment is
 // skipped; materials, consumables, skins and titles mostly carry over.
 //
+// NC lists most items several times: an Elyos and an Asmodian copy, a
+// reward-chest-only copy, and a "(Bound)" copy that can't be traded. Every copy
+// of a name, Bound or not, collapses into one row. Its sources are the union of
+// the copies', kept in two lists when the tradable and bound copies come from
+// different places, so the panel can say which sources give the tradable one. The other ids are kept so
+// links to them, and sources.json entries naming them, still resolve.
+//
 // Every response is cached under scripts/.cache, so a rerun only asks NC for
 // what it hasn't seen. Pass --refresh to refetch everything.
 //
@@ -55,6 +62,8 @@ interface GlobalItemResponse {
   grade?: string;
   categoryName?: string;
   icon?: string;
+  tradable?: boolean;
+  sources?: unknown;
 }
 
 interface CatalogRow {
@@ -68,9 +77,22 @@ interface GlobalItem {
   grade: string | undefined;
   category: string | undefined;
   icon: string;
+  tradable: boolean;
+  /** NC's source categories, e.g. ["Reward Chest", "Expedition"] */
+  sources: string[];
 }
 
-type IndexTuple = [id: number, name: string, grade: string, category: string, icon: string];
+/**
+ * One row per item, with every copy of it merged. Sources index into the file's
+ * sourceNames. When some copies trade and some don't, and they come from different
+ * places, `sources` is the tradable copies' and `bound` the rest's; otherwise `bound` is null. `alts` are the other
+ * copies' ids, and is left off when there are none.
+ */
+type IndexTuple =
+  | [id: number, name: string, grade: string, category: string, icon: string, sources: number[], bound: number[] | null]
+  | [id: number, name: string, grade: string, category: string, icon: string, sources: number[], bound: number[] | null, alts: number[]];
+
+const BOUND_SUFFIX = / \(Bound\)$/;
 
 let nextSlot = 0;
 async function rateLimit() {
@@ -127,7 +149,17 @@ async function loadGlobalCache(): Promise<Map<number, GlobalItem | null>> {
   if (!existsSync(globalFile)) return seen;
   for (const line of (await readFile(globalFile, 'utf8')).split('\n')) {
     if (!line) continue;
-    const row = JSON.parse(line) as { id: number; item: GlobalItem | null };
+    let row: { id: number; item: GlobalItem | null };
+    try {
+      row = JSON.parse(line) as typeof row;
+    } catch {
+      continue; // the last line of a run that was killed mid-write
+    }
+    // lines from before sources and tradable were kept are stale, so they're refetched
+    if (row.item && (!Array.isArray(row.item.sources) || typeof row.item.tradable !== 'boolean')) {
+      seen.delete(row.id);
+      continue;
+    }
     seen.set(row.id, row.item);
   }
   return seen;
@@ -135,8 +167,8 @@ async function loadGlobalCache(): Promise<Map<number, GlobalItem | null>> {
 
 async function sourcedIds(): Promise<number[]> {
   if (!existsSync(sourcesFile)) return [];
-  const { items = [] } = JSON.parse(await readFile(sourcesFile, 'utf8')) as { items?: { id?: unknown }[] };
-  return items.map((entry) => entry.id).filter((id): id is number => Number.isInteger(id));
+  const { items = [] } = JSON.parse(await readFile(sourcesFile, 'utf8')) as { items?: { ids?: unknown[] }[] };
+  return items.flatMap((entry) => entry.ids ?? []).filter((id): id is number => Number.isInteger(id));
 }
 
 async function main(): Promise<void> {
@@ -167,6 +199,8 @@ async function main(): Promise<void> {
         grade: body.grade,
         category: body.categoryName,
         icon: iconFile(body.icon),
+        tradable: Boolean(body.tradable),
+        sources: Array.isArray(body.sources) ? body.sources.filter((s): s is string => typeof s === 'string') : [],
       } : null;
       cache.set(id, item);
       await appendFile(globalFile, JSON.stringify({ id, item }) + '\n');
@@ -178,20 +212,57 @@ async function main(): Promise<void> {
   }
   await Promise.all(Array.from({ length: WORKERS }, worker));
 
-  const rows: IndexTuple[] = [];
+  const byName = new Map<string, { id: number; item: GlobalItem & { name: string } }[]>();
   for (const id of ids) {
     const item = cache.get(id);
-    if (item?.name) rows.push([id, item.name, item.grade || '', item.category || '', item.icon || '']);
+    if (!item?.name) continue;
+    const base = item.name.replace(BOUND_SUFFIX, '');
+    const group = byName.get(base) ?? [];
+    group.push({ id, item: { ...item, name: item.name } });
+    byName.set(base, group);
+  }
+
+  const sourceNames: string[] = [];
+  const sourceIndex = (name: string): number => {
+    let i = sourceNames.indexOf(name);
+    if (i < 0) i = sourceNames.push(name) - 1;
+    return i;
+  };
+
+  const union = (copies: { item: GlobalItem }[]): number[] =>
+    [...new Set(copies.flatMap(({ item }) => item.sources))].map(sourceIndex);
+
+  const rows: IndexTuple[] = [];
+  let split = 0;
+  for (const [base, group] of byName) {
+    // the item panel loads one copy live: prefer a tradable one, then whichever NC says most about
+    group.sort((a, b) => Number(b.item.tradable) - Number(a.item.tradable)
+      || b.item.sources.length - a.item.sources.length || a.id - b.id);
+    const [main, ...others] = group as [typeof group[0], ...typeof group];
+    // keep "(Bound)" in the name only when there's no other kind of copy to fall back on
+    const name = group.some(({ item }) => !BOUND_SUFFIX.test(item.name)) ? base : main.item.name;
+    // list the two kinds of copy apart only when they come from different places
+    const tradable = union(group.filter(({ item }) => item.tradable));
+    const bound = union(group.filter(({ item }) => !item.tradable));
+    const apart = tradable.length + bound.length > 0
+      && group.some(({ item }) => item.tradable) && group.some(({ item }) => !item.tradable)
+      && [...tradable].sort().join() !== [...bound].sort().join();
+    if (apart) split++;
+    const row: IndexTuple = [main.id, name, main.item.grade || '', main.item.category || '', main.item.icon || '',
+      apart ? tradable : union(group), apart ? bound : null];
+    rows.push(others.length ? [...row, others.map(({ id }) => id).sort((a, b) => a - b)] : row);
   }
   rows.sort((a, b) => a[1].localeCompare(b[1]) || a[0] - b[0]);
 
   await writeFile(outFile, JSON.stringify({
     generated: new Date().toISOString().slice(0, 10),
     iconBase: ICON_BASE,
-    fields: ['id', 'name', 'grade', 'category', 'icon'],
+    fields: ['id', 'name', 'grade', 'category', 'icon', 'sources', 'bound', 'alts'],
+    sourceNames,
     items: rows,
   }));
-  console.log(`wrote ${rows.length} items to ${path.relative(root, outFile)}`);
+  const merged = rows.reduce((n, row) => n + (row[7]?.length ?? 0), 0);
+  console.log(`wrote ${rows.length} items to ${path.relative(root, outFile)}: ${merged} extra copies merged in, ${split} with tradable and bound sources listed apart`);
 }
 
 main().catch((err: unknown) => {

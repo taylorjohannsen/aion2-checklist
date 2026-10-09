@@ -1056,6 +1056,30 @@ main {
   font-weight: 600;
 }
 
+/* Tradable / Bound, when an item's two kinds of copy come from different places */
+.src-groups {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+  align-items: start;
+  margin: 0 0 10px;
+}
+
+.src-groups dt {
+  padding-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.src-groups dd {
+  margin: 0;
+}
+
+.src-groups .src-tags {
+  margin: 0;
+}
+
 .source-list {
   display: flex;
   flex-direction: column;

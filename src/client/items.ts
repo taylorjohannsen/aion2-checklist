@@ -20,8 +20,8 @@ interface CuratedSource {
 
 /** One hand-written entry in public/data/sources.json. */
 interface CuratedEntry {
-  /** NC item id, when the thing is a real item; currencies use `key` instead */
-  id?: number;
+  /** NC item ids it attaches to (any copy's id works); currencies have none and use `key` */
+  ids?: number[];
   key?: string;
   name: string;
   kind?: string;
@@ -39,12 +39,20 @@ interface SourcesFile {
   items: CuratedEntry[];
 }
 
-/** items.json stores rows as tuples to stay small: [id, name, grade, category, icon]. */
-type IndexTuple = [id: number, name: string, grade: string, category: string, icon: string];
+/**
+ * items.json stores rows as tuples to stay small. Each row is every copy of one item
+ * merged (see src/scripts/build-items.ts). Sources index into `sourceNames`; `bound`
+ * is null unless tradable and bound copies have different sources.
+ */
+type IndexTuple = [
+  id: number, name: string, grade: string, category: string, icon: string,
+  sources?: number[], bound?: number[] | null, alts?: number[],
+];
 
 interface ItemsFile {
   generated?: string;
   iconBase?: string;
+  sourceNames?: string[];
   items: IndexTuple[];
 }
 
@@ -57,6 +65,10 @@ interface Row {
   grade: string;
   category: string;
   icon: string;
+  /** NC's source categories, for the tradable copies when `bound` is set */
+  sources: string[];
+  /** NC's sources for the copies that can't be traded, when they differ from the tradable ones */
+  bound: string[] | null;
   curated?: CuratedEntry;
   /** lowercased name, for ranking */
   lower: string;
@@ -68,6 +80,7 @@ interface Row {
 
 interface Index {
   rows: Row[];
+  /** every row by its own key, plus by each merged copy's id */
   byKey: Map<string, Row>;
   iconBase: string;
   sources: SourcesFile;
@@ -153,32 +166,66 @@ export function initItems({ root, getState, commit }: {
       fetchJSON<SourcesFile>('/data/sources.json', { items: [] }),
     ]).then(([items, sources]) => buildIndex(items, sources));
     index = await loading;
+    adoptMergedKeys(index);
     return index;
   }
 
+  // Pins and notes saved before copies were merged can name a copy's id. Point them at the row.
+  function adoptMergedKeys(idx: Index): void {
+    const { items } = getState();
+    const own = (key: string): string => idx.byKey.get(key)?.key ?? key;
+    const pinned = [...new Set(items.pinned.map(own))];
+    let changed = pinned.join() !== items.pinned.join();
+    items.pinned = pinned;
+    for (const [key, note] of Object.entries(items.notes)) {
+      const to = own(key);
+      if (to === key) continue;
+      items.notes[to] = items.notes[to] ? `${items.notes[to]}\n${note}` : note;
+      delete items.notes[key];
+      changed = true;
+    }
+    if (changed) commit();
+  }
+
   function buildIndex(itemData: ItemsFile, sourceData: SourcesFile): Index {
+    const rows: Row[] = [];
     const byKey = new Map<string, Row>();
     const iconBase = itemData.iconBase || '';
-    for (const [id, name, grade, category, icon] of itemData.items || []) {
-      byKey.set(String(id), { key: String(id), id, name, grade, category, icon: icon ? iconBase + icon : '', lower: '', haystack: '' });
+    const sourceNames = itemData.sourceNames || [];
+    const named = (indexes: number[]): string[] => indexes.map((i) => sourceNames[i]).filter((s): s is string => s !== undefined);
+    for (const [id, name, grade, category, icon, sources = [], bound = null, alts = []] of itemData.items || []) {
+      const row: Row = {
+        key: String(id), id, name, grade, category, icon: icon ? iconBase + icon : '',
+        sources: named(sources), bound: bound && named(bound), lower: '', haystack: '',
+      };
+      rows.push(row);
+      byKey.set(row.key, row);
+      for (const alt of alts) byKey.set(String(alt), row);
     }
     for (const entry of sourceData.items || []) {
-      const key = entry.id ? String(entry.id) : entry.key;
+      const linked = new Set((entry.ids ?? []).map((id) => byKey.get(String(id))).filter((row): row is Row => row !== undefined));
+      for (const row of linked) row.curated = entry;
+      if (linked.size) continue;
+      // currencies, and anything else the index has no item for, get a row of their own
+      const id = entry.ids?.[0] ?? null;
+      const key = entry.key ?? (id ? String(id) : '');
       if (!key) continue;
-      const row = byKey.get(key) || {
+      const row: Row = {
         key,
-        id: entry.id || null,
+        id,
         name: entry.name,
         grade: entry.grade || '',
         category: entry.kind || '',
         icon: entry.icon ? iconURL(entry.icon) : '',
+        sources: [],
+        bound: null,
+        curated: entry,
         lower: '',
         haystack: '',
       };
-      row.curated = entry;
+      rows.push(row);
       byKey.set(key, row);
     }
-    const rows = [...byKey.values()];
     for (const row of rows) {
       row.lower = row.name.toLowerCase();
       row.haystack = [row.lower, ...(row.curated?.aliases || []).map((a) => a.toLowerCase())].join(' | ');
@@ -281,10 +328,14 @@ export function initItems({ root, getState, commit }: {
     const live = row.id ? details.get(row.id) : undefined;
     const loaded = live && !(live instanceof Promise) ? live : null;
     const curated = row.curated;
-    const official = loaded?.sources ?? [];
+    // the live record is the row's main copy, which the build files on the tradable side
+    const official = [...new Set([...row.sources, ...(loaded?.sources ?? [])])];
+    const officialBound = row.bound ?? [];
+    const split = row.bound !== null;
     const sources = curated?.sources ?? [];
-    const hasOfficial = official.length > 0;
+    const hasOfficial = official.length > 0 || officialBound.length > 0;
     const hasCurated = sources.length > 0;
+    const tagList = (list: string[]) => h('ul', { class: 'src-tags' }, list.map((s) => h('li', { class: 'src-tag' }, s)));
     let description: Child = null;
     if (row.id) {
       description = loaded
@@ -297,7 +348,7 @@ export function initItems({ root, getState, commit }: {
         itemIcon(row, 64),
         h('div', { class: 'item-head-text' },
           h('h2', { class: `item-title ${gradeClass(row.grade)}` }, row.name),
-          h('p', { class: 'muted' }, [row.category, row.grade, loaded?.tradable ? 'Tradable' : null].filter(Boolean).join(' · ')))),
+          h('p', { class: 'muted' }, [row.category, row.grade, loaded?.tradable && !split ? 'Tradable' : null].filter(Boolean).join(' · ')))),
       h('div', { class: 'item-actions' },
         h('button', { class: `button small${pinned ? '' : ' ghost'}`, type: 'button', 'aria-pressed': String(pinned), onclick: () => togglePin(row) }, pinned ? '★ Pinned' : '☆ Pin'),
         h('button', { class: 'button small ghost', type: 'button', onclick: () => copyLink(row) }, 'Copy link')),
@@ -305,8 +356,12 @@ export function initItems({ root, getState, commit }: {
       description && h('p', { class: 'item-desc' }, description),
       h('section', { class: 'item-section' },
         h('h3', {}, 'Where to get it'),
-        // NC's own categories, when the live record has them
-        hasOfficial && h('ul', { class: 'src-tags' }, official.map((s) => h('li', { class: 'src-tag' }, s))),
+        // NC's own categories, split when the tradable and bound copies come from different places
+        hasOfficial && (split
+          ? h('dl', { class: 'src-groups' },
+            official.length > 0 && [h('dt', {}, 'Tradable'), h('dd', {}, tagList(official))],
+            officialBound.length > 0 && [h('dt', {}, 'Bound'), h('dd', {}, tagList(officialBound))])
+          : tagList(official)),
         hasCurated && [
           h('ul', { class: 'source-list' }, sources.map((s) => h('li', { class: 'source' },
             h('span', { class: `source-type type-${s.type || 'other'}` }, SOURCE_TYPES[s.type ?? 'other'] || 'Other'),
@@ -409,7 +464,7 @@ export function initItems({ root, getState, commit }: {
       const idx = await load();
       let row = idx.byKey.get(key);
       if (!row && /^\d{6,10}$/.test(key)) {
-        row = { key, id: Number(key), name: `Item ${key}`, grade: '', category: '', icon: '', lower: '', haystack: '', placeholder: true };
+        row = { key, id: Number(key), name: `Item ${key}`, grade: '', category: '', icon: '', sources: [], bound: null, lower: '', haystack: '', placeholder: true };
         idx.byKey.set(key, row);
       }
       if (row) select(row, { scroll: false });

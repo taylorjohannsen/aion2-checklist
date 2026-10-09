@@ -9,7 +9,7 @@ Daily and weekly checklist for AION 2 Global, with character lookup and item sea
   header counts down to both and to the hourly events.
 - **Characters:** look yours up by name to pull its class, level, combat power
   and item level.
-- **Items:** search about 4,600 items to see where they come from, and keep
+- **Items:** search about 3,500 items to see where they come from, and keep
   your own notes.
 
 Progress is saved in your browser. There are no accounts.

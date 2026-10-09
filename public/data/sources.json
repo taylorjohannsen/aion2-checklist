@@ -1,6 +1,6 @@
 {
   "updated": "2026-10-09",
-  "about": "Where-to-get-it info for the item lookup. Entries with an id attach to that item in items.json; entries with only a key (currencies, materials the index doesn't have) are listed on their own. Source types: shop, content, craft, gather, other. Prices and limits are community-reported and change with patches.",
+  "about": "Where-to-get-it info for the item lookup. Entries with ids attach to those items in items.json (any id of a merged item works); entries with only a key (currencies, materials the index doesn't have) are listed on their own. Source types: shop, content, craft, gather, other. Prices and limits are community-reported and change with patches.",
   "items": [
     {
       "key": "stigma-shard",
@@ -69,7 +69,7 @@
       "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://gamerant.com/aion-2-unlock-stigma-shards/"]
     },
     {
-      "id": 512000014,
+      "ids": [512000014],
       "name": "Odyle Energy",
       "kind": "Usage Count Recharge Ticket",
       "aliases": ["odyle", "energy", "od energy"],
@@ -82,7 +82,7 @@
       "refs": ["https://metabot.gg/en/aion-2/guides/daily-weekly-checklist", "https://couga54.github.io/aion2-guides/en/weekly/"]
     },
     {
-      "id": 610610016,
+      "ids": [610610016],
       "name": "Radiant Odyle",
       "aliases": ["green odyle"],
       "summary": "A crafting and Substance Morph material.",
@@ -93,7 +93,7 @@
       "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://couga54.github.io/aion2-guides/en/week-1/"]
     },
     {
-      "id": 531351001,
+      "ids": [531351001],
       "name": "Lesser Abyssal Manastone (Bound)",
       "aliases": ["abyssal manastone", "manastone"],
       "sources": [
@@ -102,7 +102,7 @@
       "refs": ["https://wikily.gg/aion-2/shops/abyss-trade-shop"]
     },
     {
-      "id": 533551001,
+      "ids": [533551001],
       "name": "Lesser Abyssal Soulstone (Bound)",
       "aliases": ["abyssal soulstone", "soulstone"],
       "sources": [
@@ -135,7 +135,7 @@
       "refs": ["https://wikily.gg/aion-2/shops/festival-shop", "https://www.keengamer.com/articles/guides/aion-2-daily-and-weekly-checklist-what-to-do-before-each-reset/"]
     },
     {
-      "key": "amplify-stone-fragment",
+      "ids": [661800004],
       "name": "Amplify Stone Fragment (Unique)",
       "kind": "Material",
       "aliases": ["amplify fragment", "amplify stone"],
@@ -146,15 +146,31 @@
       "refs": ["https://wikily.gg/aion-2/shops/nightmare-trade-shop", "https://game8.co/games/Aion-2/archives/629164"]
     },
     {
-      "key": "refining-stone",
+      "ids": [610530001],
       "name": "Refining Stone",
       "kind": "Material",
-      "aliases": ["refining stones", "expert's refining stone", "artisan's refining stone"],
+      "aliases": ["refining stones"],
       "sources": [
         { "type": "shop", "where": "Season Shop", "cost": "40 Oath Coins", "limit": "50 per account" },
-        { "type": "shop", "where": "Season Shop: Expert's Refining Stone", "cost": "400 Oath Coins", "limit": "30 per account" },
-        { "type": "shop", "where": "Season Shop: Artisan's Refining Stone", "cost": "4,000 Oath Coins", "limit": "20 per account" },
         { "type": "content", "where": "Dimensional Invasion and Shugo Festival" }
+      ],
+      "refs": ["https://metabot.gg/en/aion-2/shops", "https://game8.co/games/Aion-2/archives/629164"]
+    },
+    {
+      "ids": [610530005],
+      "name": "Expert's Refining Stone",
+      "kind": "Material",
+      "sources": [
+        { "type": "shop", "where": "Season Shop", "cost": "400 Oath Coins", "limit": "30 per account" }
+      ],
+      "refs": ["https://metabot.gg/en/aion-2/shops", "https://game8.co/games/Aion-2/archives/629164"]
+    },
+    {
+      "ids": [610530008],
+      "name": "Artisan's Refining Stone",
+      "kind": "Material",
+      "sources": [
+        { "type": "shop", "where": "Season Shop", "cost": "4,000 Oath Coins", "limit": "20 per account" }
       ],
       "refs": ["https://metabot.gg/en/aion-2/shops", "https://game8.co/games/Aion-2/archives/629164"]
     },
@@ -182,7 +198,7 @@
       "refs": ["https://metabot.gg/en/aion-2/guides/daily-weekly-checklist"]
     },
     {
-      "key": "arcana",
+      "ids": [535113001, 535113002, 535123001, 535123002, 535133001, 535133002, 535143001, 535143002, 535153001, 535153002],
       "name": "Arcana",
       "kind": "Equipment",
       "aliases": ["arcana card", "blue arcana"],
