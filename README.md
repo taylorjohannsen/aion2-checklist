@@ -4,7 +4,7 @@ Daily and weekly checklist for AION 2 Global, with character lookup and a
 where-to-get-it item search. Progress is saved in each visitor's browser
 (localStorage). There are no accounts and no database.
 
-- **Checklist:** daily and weekly tasks with counters, per character. They
+- **Checklist:** daily and weekly tasks, one checkbox each, per character. They
   clear automatically at the reset: 07:00 UTC daily and Wednesday 07:00 UTC
   weekly, the same on every Global region. The header shows countdowns to the
   next resets and to Shugo Festival, Dimensional Invasion and Spacetime Rift.
@@ -49,15 +49,15 @@ npm start            # http://127.0.0.1:3005
 
 ## Deploy (nginx + pm2)
 
-1. **DNS:** add an `A` record for `aion2` pointing at the server's IP.
-2. **Code:** put the project at `/opt/aion2-checklist`, either with a git
-   clone or by copying it up. Leave out `scripts/.cache`.
+1. **DNS:** add an `A` record for `aion` pointing at the server's IP.
+2. **Code:** clone the repo to `/opt/aion2-checklist`:
+   `git clone https://github.com/taylorjohannsen/aion2-checklist /opt/aion2-checklist`.
 3. **Relay:** run `pm2 start deploy/ecosystem.config.cjs && pm2 save`. It
    listens on `127.0.0.1:3005`.
 4. **nginx:** copy `deploy/nginx.conf` to
-   `/etc/nginx/sites-available/aion2.taylorjohannsen.com`, symlink it into
+   `/etc/nginx/sites-available/aion.taylorjohannsen.com`, symlink it into
    `sites-enabled`, then run `sudo nginx -t && sudo systemctl reload nginx`.
-5. **HTTPS:** run `sudo certbot --nginx -d aion2.taylorjohannsen.com`.
+5. **HTTPS:** run `sudo certbot --nginx -d aion.taylorjohannsen.com`.
 
 To ship an update, pull or copy the new files, then run
 `pm2 restart aion2-checklist`. The restart is only needed when `server.js`

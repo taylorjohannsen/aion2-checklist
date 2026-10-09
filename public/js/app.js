@@ -338,59 +338,24 @@ function renderChecklist() {
   tickTimers(Date.now());
 }
 
+// Every task is a single checkbox: done or not. The stored count is still 0..max,
+// so ticking a task fills it and backups made before this change still read right.
 function taskCard(task) {
-  const big = task.max > 6;
-  const card = h('article', { class: `task${task.max === 1 ? ' is-single' : ''}` });
+  const card = h('article', { class: 'task' });
   const main = h('button', {
     class: 'task-main',
     type: 'button',
-    onclick: () => bump(task, 1),
-    oncontextmenu: (e) => {
-      e.preventDefault();
-      bump(task, -1);
-    },
+    onclick: () => toggle(task),
   },
     h('span', { class: 'task-icon-wrap' },
       h('img', { class: 'task-icon', src: iconURL(task.icon), alt: '', width: 48, height: 48, decoding: 'async' }),
       h('span', { class: 'task-check', 'aria-hidden': 'true' }, '✓')),
     h('span', { class: 'task-text' },
-      h('span', { class: 'task-name' }, task.name),
-      task.note && h('span', { class: 'task-note' }, task.note)));
+      h('span', { class: 'task-name' }, task.name, task.max > 1 && h('span', { class: 'task-times' }, `×${task.max}`))));
 
-  let progress;
-  if (task.max === 1) {
-    // a mouse target only; the main button already toggles for keyboards and screen readers
-    progress = h('button', { class: 'task-toggle', type: 'button', tabindex: '-1', 'aria-hidden': 'true', onclick: () => bump(task, 1) });
-  } else if (!big) {
-    progress = h('div', { class: 'pips', role: 'group', 'aria-label': `${task.name} count` },
-      Array.from({ length: task.max }, (_, i) => h('button', {
-        class: 'pip',
-        type: 'button',
-        'aria-label': `Set to ${i + 1}`,
-        onclick: () => {
-          const count = store.getCount(state, active().id, task);
-          set(task, count === i + 1 ? i : i + 1);
-        },
-      })));
-  } else {
-    const input = h('input', {
-      class: 'count-input',
-      type: 'number',
-      inputmode: 'numeric',
-      min: 0,
-      max: task.max,
-      'aria-label': `${task.name} count`,
-      onchange: (e) => set(task, Number.parseInt(e.currentTarget.value, 10) || 0),
-    });
-    progress = h('div', { class: 'stepper' },
-      h('div', { class: 'stepper-controls' },
-        h('button', { class: 'step', type: 'button', 'aria-label': 'Remove one', onclick: () => bump(task, -1) }, '−'),
-        input,
-        h('span', { class: 'count-max muted' }, `/ ${task.max}`),
-        h('button', { class: 'step', type: 'button', 'aria-label': 'Add one', onclick: () => bump(task, 1) }, '+'),
-        h('button', { class: 'step step-fill', type: 'button', 'aria-label': 'Mark all done', title: 'All done', onclick: () => fill(task) }, '✓')));
-  }
-  card.append(main, h('div', { class: 'task-progress' }, progress));
+  // a mouse target only; the main button already toggles for keyboards and screen readers
+  const box = h('button', { class: 'task-toggle', type: 'button', tabindex: '-1', 'aria-hidden': 'true', onclick: () => toggle(task) });
+  card.append(main, h('div', { class: 'task-progress' }, box));
   cards.set(task.id, { card, task });
   refreshCard(task.id);
   return card;
@@ -400,29 +365,14 @@ function refreshCard(taskId) {
   const entry = cards.get(taskId);
   if (!entry) return;
   const { card, task } = entry;
-  const count = store.getCount(state, active().id, task);
-  const done = count >= task.max;
+  const done = store.getCount(state, active().id, task) >= task.max;
   card.classList.toggle('is-done', done);
-  card.style.setProperty('--p', count / task.max);
   const main = $('.task-main', card);
-  main.setAttribute('aria-label', task.max === 1
-    ? `${task.name}${done ? ', done. Click to undo.' : '. Click to mark done.'}`
-    : `${task.name}: ${count} of ${task.max}${done ? ', done' : ''}. Click to add one, right-click to remove one.`);
-  card.querySelectorAll('.pip').forEach((pip, i) => {
-    pip.classList.toggle('is-on', i < count);
-    pip.setAttribute('aria-pressed', String(i < count));
-  });
-  const input = $('.count-input', card);
-  if (input) input.value = count;
+  main.setAttribute('aria-pressed', String(done));
+  main.setAttribute('aria-label', `${task.name}${task.max > 1 ? `, ${task.max} times` : ''}${done ? ', done. Click to undo.' : '. Click to mark done.'}`);
 }
 
-function bump(task, delta) {
-  const count = store.getCount(state, active().id, task);
-  if (task.max === 1 && delta > 0) set(task, count ? 0 : 1);
-  else set(task, count + delta);
-}
-
-const fill = (task) => set(task, store.getCount(state, active().id, task) >= task.max ? 0 : task.max);
+const toggle = (task) => set(task, store.getCount(state, active().id, task) >= task.max ? 0 : task.max);
 
 function set(task, value) {
   const c = active();
@@ -530,7 +480,6 @@ function renderTasksDialog() {
         h('label', { class: 'field' }, h('span', {}, 'Resets'),
           h('select', { name: 'taskPeriod' }, PERIODS.map((p) => h('option', { value: p.id }, p.label)))),
         h('label', { class: 'field narrow' }, h('span', {}, 'Count'), h('input', { name: 'taskMax', type: 'number', min: 1, max: MAX_COUNT, value: 1, required: true }))),
-      h('label', { class: 'field' }, h('span', {}, 'Note (optional)'), h('input', { name: 'taskNote', maxlength: 120, autocomplete: 'off' })),
       h('fieldset', { class: 'icon-picker' },
         h('legend', {}, 'Icon'),
         Object.entries(ICONS).map(([key, icon], i) => h('label', { class: 'icon-choice', title: icon.label },
@@ -546,7 +495,6 @@ function onAddTask(e) {
     name: form.taskName.value.trim(),
     period: form.taskPeriod.value,
     max: Number.parseInt(form.taskMax.value, 10) || 1,
-    note: form.taskNote.value.trim(),
     icon: form.taskIcon.value,
   });
   if (!task) return;

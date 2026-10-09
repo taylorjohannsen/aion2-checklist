@@ -173,6 +173,7 @@ export function initItems({ root, getState, commit }) {
     const live = row.id ? details.get(row.id) : null;
     const loaded = live && !(live instanceof Promise);
     const curated = row.curated;
+    const official = loaded ? live.sources : null;
     let description = null;
     if (row.id) {
       description = loaded
@@ -193,6 +194,11 @@ export function initItems({ root, getState, commit }) {
       description && h('p', { class: 'item-desc' }, description),
       h('section', { class: 'item-section' },
         h('h3', {}, 'Where to get it'),
+        // NC's own categories, when the live record has them
+        official?.length > 0 && [
+          h('ul', { class: 'src-tags' }, official.map((s) => h('li', { class: 'src-tag' }, s))),
+          h('p', { class: 'muted small' }, 'NCSOFT’s categories for this item.'),
+        ],
         curated?.sources?.length
           ? [
             h('ul', { class: 'source-list' }, curated.sources.map((s) => h('li', { class: 'source' },
@@ -207,7 +213,9 @@ export function initItems({ root, getState, commit }) {
               curated.refs?.length ? ['. Sources: ', curated.refs.map((url, i) => [i ? ', ' : '', h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, new URL(url).hostname.replace(/^www\./, ''))])] : '',
               '.'),
           ]
-          : h('p', { class: 'muted' }, 'No sources recorded for this one yet. Jot down where you found it below.')),
+          : h('p', { class: 'muted' }, official?.length > 0
+            ? 'No hand-written detail yet. NCSOFT doesn’t say which dungeon or what it costs, so add what you find below.'
+            : 'No sources recorded for this one yet. Jot down where you found it below.')),
       h('section', { class: 'item-section' },
         h('h3', {}, h('label', { for: 'item-notes' }, 'My notes')),
         h('textarea', {

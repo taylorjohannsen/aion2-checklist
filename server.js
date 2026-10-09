@@ -234,6 +234,9 @@ const routes = {
         race: data.raceName || '',
         level: data.equipLevel || 0,
         tradable: Boolean(data.tradable),
+        // NC's own source categories ("Expedition", "Reward Chest"). Coarser than the
+        // in-game panel, which also names the dungeon, but it covers most items.
+        sources: (Array.isArray(data.sources) ? data.sources : []).map((s) => stripTags(s)).filter(Boolean).slice(0, 12),
         icon: data.icon ? data.icon.replace(NC_ICONS, '') : '',
       },
     };

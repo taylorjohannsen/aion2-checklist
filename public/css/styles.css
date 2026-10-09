@@ -658,7 +658,8 @@ main {
 .task {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -672,7 +673,7 @@ main {
   left: 0;
   bottom: 0;
   height: 3px;
-  width: calc(var(--p, 0) * 100%);
+  width: 0;
   background: var(--accent);
   transition: width 0.25s, background 0.15s;
 }
@@ -687,6 +688,7 @@ main {
 }
 
 .task.is-done::after {
+  width: 100%;
   background: var(--done);
 }
 
@@ -695,7 +697,7 @@ main {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 12px 6px;
+  padding: 12px;
   border: 0;
   background: none;
   text-align: left;
@@ -757,26 +759,16 @@ main {
   color: var(--muted);
 }
 
-.task-note {
+.task-times {
+  margin-left: 6px;
   font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 
 .task-progress {
-  padding: 4px 12px 12px 72px;
-}
-
-.task.is-single {
-  flex-direction: row;
-  align-items: center;
-}
-
-.task.is-single .task-main {
-  padding-bottom: 12px;
-}
-
-.task.is-single .task-progress {
-  padding: 0 14px 0 0;
+  padding: 0 20px 0 0;
 }
 
 .task-toggle {
@@ -801,94 +793,6 @@ main {
   color: var(--bg);
   font-size: 15px;
   font-weight: 800;
-}
-
-.pips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pip {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 2px solid var(--border-strong);
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-
-.pip:hover {
-  border-color: var(--accent);
-}
-
-.pip:active {
-  transform: scale(0.9);
-}
-
-.pip.is-on {
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow: inset 0 0 0 3px var(--surface);
-}
-
-.task.is-done .pip.is-on {
-  border-color: var(--done);
-  background: var(--done);
-}
-
-.stepper-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.step {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 9px;
-  background: var(--surface-2);
-  font-size: 17px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.step:hover {
-  border-color: var(--accent);
-}
-
-.step-fill {
-  margin-left: auto;
-  color: var(--done);
-  font-size: 15px;
-}
-
-.count-input {
-  width: 52px;
-  min-height: 32px;
-  padding: 4px 6px;
-  text-align: center;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-.count-input::-webkit-outer-spin-button,
-.count-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.count-max {
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
 }
 
 .empty {
@@ -1075,6 +979,25 @@ main {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent);
+}
+
+/* NC's own source categories, shown above the hand-written entries */
+.src-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.src-tag {
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .source-list {
