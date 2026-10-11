@@ -4,7 +4,7 @@ import type { Character, Tab } from './store.js';
 import { api, type RegionId, type SearchHit } from './api.js';
 import { ICONS, iconURL } from './icons.js';
 import { PERIODS, MAX_COUNT, type Period, type ResolvedTask } from './tasks.js';
-import { EVENTS, eventStatus, formatDuration, formatLocalTime, nextDailyReset, nextWeeklyReset } from './time.js';
+import { EVENTS, eventStatus, formatDuration, formatLocalTime, nextDailyReset, nextSiege, nextWeeklyReset } from './time.js';
 import { initItems } from './items.js';
 
 let state = store.loadState();
@@ -29,6 +29,14 @@ function control<T extends HTMLInputElement | HTMLSelectElement>(form: HTMLFormE
 }
 
 // ---------- header timers ----------
+
+// When a section's tasks next clear. Sieges run on the active character's server clock.
+function resetAt(period: Period, now: number): number {
+  if (period === 'daily') return nextDailyReset(now);
+  if (period === 'weekly') return nextWeeklyReset(now);
+  const c = active();
+  return nextSiege(now, c ? store.regionOf(state, c.id) : state.ui.region);
+}
 
 const countdowns: { id: Period; label: string; next: (now?: number) => number }[] = [
   { id: 'daily', label: 'Daily reset', next: nextDailyReset },
@@ -62,9 +70,9 @@ function tickTimers(now: number): void {
     el.title = status.open ? `${event.name} closes ${formatLocalTime(status.at)}` : `${event.name} starts ${formatLocalTime(status.at)} your time`;
   }
   for (const el of document.querySelectorAll<HTMLElement>('[data-countdown]')) {
-    const countdown = countdowns.find((c) => c.id === el.dataset['countdown']);
-    if (!countdown) continue;
-    const at = countdown.next(now);
+    const period = PERIODS.find((p) => p.id === el.dataset['countdown'])?.id;
+    if (!period) continue;
+    const at = resetAt(period, now);
     el.textContent = `Resets in ${formatDuration(at - now)}`;
     el.title = formatLocalTime(at);
   }

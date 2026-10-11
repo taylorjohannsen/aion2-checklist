@@ -1,7 +1,7 @@
 // Everything the site remembers lives in one localStorage entry, in the visitor's
 // browser. Progress is kept per character and cleared at each daily/weekly reset.
 import { DEFAULT_TASKS, MAX_COUNT, PERIODS, type Period, type ResolvedTask, type Task } from './tasks.js';
-import { dayIndex, weekIndex } from './time.js';
+import { dayIndex, siegeIndex, weekIndex } from './time.js';
 import { isIconKey } from './icons.js';
 import type { RegionId } from './api.js';
 
@@ -40,6 +40,8 @@ export interface Character {
 export interface Progress {
   day: number;
   week: number;
+  /** the hour (from the epoch) the latest Artifact Siege began, on the character's server */
+  siege: number;
   counts: Record<string, number>;
 }
 
@@ -166,7 +168,7 @@ export function normalize(data: unknown): State {
       const value = int(n, 0, MAX_COUNT);
       if (value) counts[str(taskId, 60)] = value;
     }
-    state.progress[id] = { day: int(p.day, 0, 1e6) ?? 0, week: int(p.week, 0, 1e6) ?? 0, counts };
+    state.progress[id] = { day: int(p.day, 0, 1e6) ?? 0, week: int(p.week, 0, 1e6) ?? 0, siege: int(p.siege, 0, 1e7) ?? 0, counts };
   }
 
   const tasks: Loose = isObject(data.tasks) ? data.tasks : {};
@@ -217,33 +219,40 @@ export function addCustomTask(state: State, task: { name: string; period: string
 
 // ---------- progress ----------
 
+/** The server a character plays on, which decides its siege times. Hand-added ones follow the region last searched. */
+export const regionOf = (state: State, charId: string): RegionId =>
+  state.characters.find((c) => c.id === charId)?.region ?? state.ui.region;
+
 // Clears whatever reset since the character's progress was last touched
-function rollover(state: State, progress: Progress, now: number): boolean {
+function rollover(state: State, charId: string, progress: Progress, now: number): boolean {
   const day = dayIndex(now);
   const week = weekIndex(now);
-  if (progress.day === day && progress.week === week) return false;
+  const siege = siegeIndex(now, regionOf(state, charId));
+  if (progress.day === day && progress.week === week && progress.siege === siege) return false;
+  const stale = { daily: progress.day !== day, weekly: progress.week !== week, siege: progress.siege !== siege };
   const tasks = allTasks(state);
   for (const id of Object.keys(progress.counts)) {
     const task = tasks.find((t) => t.id === id);
-    if (!task || (task.period === 'daily' && progress.day !== day) || (task.period === 'weekly' && progress.week !== week)) {
-      delete progress.counts[id];
-    }
+    if (!task || stale[task.period]) delete progress.counts[id];
   }
   progress.day = day;
   progress.week = week;
+  progress.siege = siege;
   return true;
 }
 
 export function progressFor(state: State, charId: string, now: number = Date.now()): Progress {
-  const progress = (state.progress[charId] ??= { day: dayIndex(now), week: weekIndex(now), counts: {} });
-  rollover(state, progress, now);
+  const progress = (state.progress[charId] ??= {
+    day: dayIndex(now), week: weekIndex(now), siege: siegeIndex(now, regionOf(state, charId)), counts: {},
+  });
+  rollover(state, charId, progress, now);
   return progress;
 }
 
 // True if any character's progress was cleared by a reset
 export function rolloverAll(state: State, now: number = Date.now()): boolean {
   let changed = false;
-  for (const progress of Object.values(state.progress)) changed = rollover(state, progress, now) || changed;
+  for (const [charId, progress] of Object.entries(state.progress)) changed = rollover(state, charId, progress, now) || changed;
   return changed;
 }
 

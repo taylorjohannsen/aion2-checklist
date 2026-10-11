@@ -1,5 +1,7 @@
 // AION 2 Global resets every day at 07:00 UTC (16:00 on the game's UTC+9 server
 // clock) and weekly on Wednesday at the same time, on every Global region.
+import type { RegionId } from './api.js';
+
 export const RESET_HOUR_UTC = 7;
 export const WEEKLY_RESET_DAY = 3; // Wednesday, as Date#getUTCDay counts
 
@@ -20,6 +22,72 @@ export function weekIndex(now: number = Date.now()): number {
 
 export const nextDailyReset = (now: number = Date.now()): number => (dayIndex(now) + 1) * DAY + OFFSET;
 export const nextWeeklyReset = (now: number = Date.now()): number => (weekIndex(now) + 7) * DAY + OFFSET;
+
+// ---------- Artifact Siege ----------
+// Monday, Thursday and Saturday at 21:00 on each region's own server clock, unlike the
+// resets above. Abyss Corridors stay open until the next siege, so siege tasks reset
+// there. The zones are community-reported (metabot.gg); only NA East is checked in game.
+export const SIEGE_DAYS = [1, 4, 6]; // Mon, Thu, Sat, as Date#getUTCDay counts
+export const SIEGE_HOUR = 21;
+
+const SERVER_ZONES: Record<RegionId, string> = {
+  nae: 'America/New_York',
+  naw: 'America/Los_Angeles',
+  eu: 'Europe/Berlin',
+  la: 'America/Sao_Paulo',
+  as: 'Asia/Singapore',
+};
+
+const formats = new Map<string, Intl.DateTimeFormat>();
+
+// The wall-clock date and time in a zone
+function zoneParts(ts: number, zone: string): { year: number; month: number; day: number; hour: number; minute: number; second: number } {
+  let format = formats.get(zone);
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, hourCycle: 'h23',
+      year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+    });
+    formats.set(zone, format);
+  }
+  const parts = { year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0 };
+  for (const { type, value } of format.formatToParts(ts)) if (type in parts) parts[type as keyof typeof parts] = Number(value);
+  return parts;
+}
+
+// The moment a wall-clock time happens in a zone, daylight saving included
+function zonedTime(year: number, month: number, day: number, hour: number, zone: string): number {
+  const wall = Date.UTC(year, month - 1, day, hour);
+  const offset = (at: number) => {
+    const p = zoneParts(at, zone);
+    return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - at;
+  };
+  return wall - offset(wall - offset(wall));
+}
+
+const siegeCache = new Map<string, { last: number; next: number }>();
+
+function sieges(now: number, region: RegionId): { last: number; next: number } {
+  const zone = SERVER_ZONES[region];
+  const hit = siegeCache.get(zone);
+  if (hit && now >= hit.last && now < hit.next) return hit;
+  let last = -Infinity;
+  let next = Infinity;
+  for (let k = -8; k <= 8; k++) {
+    const { year, month, day } = zoneParts(now + k * DAY, zone);
+    if (!SIEGE_DAYS.includes(new Date(Date.UTC(year, month - 1, day)).getUTCDay())) continue;
+    const at = zonedTime(year, month, day, SIEGE_HOUR, zone);
+    if (at <= now) last = Math.max(last, at);
+    else next = Math.min(next, at);
+  }
+  const found = { last, next };
+  siegeCache.set(zone, found);
+  return found;
+}
+
+// Sieges are numbered by the hour they started, counted from the epoch
+export const siegeIndex = (now: number, region: RegionId): number => Math.floor(sieges(now, region).last / HOUR);
+export const nextSiege = (now: number, region: RegionId): number => sieges(now, region).next;
 
 export interface GameEvent {
   id: string;
