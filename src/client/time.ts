@@ -96,6 +96,8 @@ export interface GameEvent {
   atMin: number;
   openMin: number;
   openLabel: string;
+  /** toast, and chime if the visitor turned sound on, when it opens */
+  alert?: boolean;
 }
 
 export interface EventStatus {
@@ -106,8 +108,8 @@ export interface EventStatus {
 
 // Recurring world events, in UTC. Community-reported, and the same on every Global region.
 export const EVENTS: GameEvent[] = [
-  { id: 'shugo', name: 'Shugo Festival', everyMin: 60, atMin: 0, openMin: 10, openLabel: 'on now' },
-  { id: 'invasion', name: 'Dimensional Invasion', everyMin: 60, atMin: 30, openMin: 3, openLabel: 'join now' },
+  { id: 'shugo', name: 'Shugo Festival', everyMin: 60, atMin: 0, openMin: 10, openLabel: 'on now', alert: true },
+  { id: 'invasion', name: 'Dimensional Invasion', everyMin: 60, atMin: 30, openMin: 3, openLabel: 'join now', alert: true },
   { id: 'rift', name: 'Spacetime Rift', everyMin: 180, atMin: 0, openMin: 10, openLabel: 'portal open' },
 ];
 

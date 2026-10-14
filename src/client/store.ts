@@ -54,7 +54,8 @@ export interface State {
   progress: Record<string, Progress>;
   tasks: { hidden: string[]; max: Record<string, number>; custom: Task[] };
   items: { pinned: string[]; notes: Record<string, string> };
-  ui: { tab: Tab; region: RegionId };
+  /** ids of the events that chime when they open */
+  ui: { tab: Tab; region: RegionId; sound: string[] };
 }
 
 /** The fields that say two entries are the same NC character. */
@@ -68,7 +69,7 @@ export function blankState(): State {
     progress: {},
     tasks: { hidden: [], max: {}, custom: [] },
     items: { pinned: [], notes: {} },
-    ui: { tab: 'checklist', region: 'nae' },
+    ui: { tab: 'checklist', region: 'nae', sound: [] },
   };
 }
 
@@ -195,6 +196,9 @@ export function normalize(data: unknown): State {
   const ui: Loose = isObject(data.ui) ? data.ui : {};
   if (ui.tab === 'items') state.ui.tab = 'items';
   if (isRegion(ui.region)) state.ui.region = ui.region;
+  state.ui.sound = (Array.isArray(ui.sound) ? ui.sound : [])
+    .filter((id): id is string => typeof id === 'string')
+    .slice(0, 10);
 
   return ensureActive(state);
 }

@@ -1,11 +1,12 @@
-import { h, clear, $, toast, number, timeAgo } from './dom.js';
+import { h, clear, $, toast, number, timeAgo, type Child } from './dom.js';
 import * as store from './store.js';
 import type { Character, Tab } from './store.js';
 import { api, type RegionId, type SearchHit } from './api.js';
 import { ICONS, iconURL } from './icons.js';
 import { PERIODS, MAX_COUNT, type Period, type ResolvedTask } from './tasks.js';
-import { EVENTS, eventStatus, formatDuration, formatLocalTime, nextDailyReset, nextSiege, nextWeeklyReset } from './time.js';
+import { EVENTS, eventStatus, type GameEvent, formatDuration, formatLocalTime, nextDailyReset, nextSiege, nextWeeklyReset } from './time.js';
 import { initItems } from './items.js';
+import { chime, unlockSound } from './sound.js';
 
 let state = store.loadState();
 let storageWarned = false;
@@ -43,14 +44,53 @@ const countdowns: { id: Period; label: string; next: (now?: number) => number }[
   { id: 'weekly', label: 'Weekly reset', next: nextWeeklyReset },
 ];
 
+const soundOn = (id: string): boolean => state.ui.sound.includes(id);
+
+function toggleSound(event: GameEvent): void {
+  const on = !soundOn(event.id);
+  state.ui.sound = on ? [...state.ui.sound, event.id] : state.ui.sound.filter((id) => id !== event.id);
+  commit();
+  syncSoundButtons();
+  // play it once so the visitor hears what they turned on
+  if (on) void unlockSound().then(chime);
+}
+
+function syncSoundButtons(): void {
+  for (const button of document.querySelectorAll<HTMLElement>('.timer-sound')) {
+    button.setAttribute('aria-pressed', String(soundOn(button.dataset['event'] ?? '')));
+  }
+}
+
 function buildTimers(): void {
-  const timer = (id: string, label: string, kind: 'reset' | 'event') =>
+  const timer = (id: string, label: string, kind: 'reset' | 'event', extra?: Child) =>
     h('div', { class: `timer timer-${kind}`, id: `timer-${id}` },
       h('span', { class: 'timer-label' }, label),
-      h('span', { class: 'timer-value' }, '…'));
+      h('span', { class: 'timer-value' }, '…'),
+      extra);
+  const soundButton = (e: GameEvent) =>
+    h('button', {
+      type: 'button',
+      class: 'timer-sound',
+      dataset: { event: e.id },
+      'aria-label': `Sound when ${e.name} starts`,
+      title: 'Sound',
+      onclick: () => toggleSound(e),
+    });
   clear($('#timers'),
     h('div', { class: 'timer-group', 'aria-label': 'Resets' }, countdowns.map((c) => timer(c.id, c.label, 'reset'))),
-    h('div', { class: 'timer-group', 'aria-label': 'Events' }, EVENTS.map((e) => timer(e.id, e.name, 'event'))));
+    h('div', { class: 'timer-group', 'aria-label': 'Events' },
+      EVENTS.map((e) => timer(e.id, e.name, 'event', e.alert && soundButton(e)))));
+}
+
+// The window each event last alerted for, keyed by when it closes. Seeded with
+// whatever is open now, so loading the page mid-event doesn't go off.
+const alerted = new Map(EVENTS.map((e) => [e.id, eventStatus(e).at]));
+
+function alertEvent(event: GameEvent, closes: number): void {
+  if (!event.alert || alerted.get(event.id) === closes) return;
+  alerted.set(event.id, closes);
+  toast(`${event.name} is starting`, undefined, 'alert');
+  if (soundOn(event.id)) chime();
 }
 
 function tickTimers(now: number): void {
@@ -64,6 +104,7 @@ function tickTimers(now: number): void {
     const status = eventStatus(event, now);
     const el = $(`#timer-${event.id}`);
     el.classList.toggle('is-open', status.open);
+    if (status.open) alertEvent(event, status.at);
     $('.timer-value', el).textContent = status.open
       ? `${event.openLabel} · ${formatDuration(status.at - now)}`
       : `in ${formatDuration(status.at - now)}`;
@@ -620,6 +661,7 @@ function route(): void {
 // ---------- startup ----------
 
 function renderAll(): void {
+  syncSoundButtons();
   renderRoster();
   renderChecklist();
   showTab(state.ui.tab, { updateHash: false });
@@ -679,6 +721,12 @@ tick();
 setInterval(tick, 1000);
 
 window.addEventListener('hashchange', route);
+// a saved sound setting can't play until the visitor interacts with the page
+for (const type of ['pointerdown', 'keydown']) {
+  document.addEventListener(type, () => {
+    if (state.ui.sound.length) void unlockSound();
+  });
+}
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
 });
@@ -686,6 +734,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('storage', (e) => {
   if (e.key !== store.STORAGE_KEY) return;
   state = store.loadState();
+  syncSoundButtons();
   renderRoster();
   renderChecklist();
   items.refresh();

@@ -355,6 +355,7 @@ textarea:focus {
 }
 
 .timer {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 112px;
@@ -373,6 +374,8 @@ textarea:focus {
 }
 
 .timer-value {
+  /* sits on the bottom edge when a long label wraps in a neighbouring timer */
+  margin-top: auto;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -388,6 +391,39 @@ textarea:focus {
 
 .timer.is-open .timer-value {
   color: var(--teal);
+}
+
+.timer:has(.timer-sound) .timer-label {
+  padding-right: 20px;
+}
+
+.timer-sound {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: var(--muted);
+  opacity: 0.6;
+  cursor: pointer;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9h4l5-4v14l-5-4H4z' fill='black'/%3E%3Cpath d='M16 9.5l5 5M21 9.5l-5 5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.timer-sound:hover {
+  opacity: 1;
+}
+
+.timer-sound[aria-pressed="true"] {
+  background: var(--done);
+  opacity: 1;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9h4l5-4v14l-5-4H4z' fill='black'/%3E%3Cpath d='M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11'/%3E%3C/svg%3E");
+}
+
+.timer-sound:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* ---------- roster ---------- */
@@ -1446,6 +1482,13 @@ dialog::backdrop {
   background: var(--surface-3);
   box-shadow: var(--shadow);
   transform: translateX(-50%);
+}
+
+.toast-alert {
+  border-color: #2fd36f;
+  background: #3ee07f;
+  color: #04240f;
+  font-weight: 650;
 }
 
 .toast[hidden] {

@@ -72,9 +72,10 @@ export interface ToastAction {
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-export function toast(message: string, action?: ToastAction): void {
+export function toast(message: string, action?: ToastAction, tone?: 'alert'): void {
   const el = $('#toast');
   clearTimeout(toastTimer);
+  el.classList.toggle('toast-alert', tone === 'alert');
   clear(el, h('span', {}, message), action && h('button', {
     class: 'toast-action',
     type: 'button',
@@ -84,7 +85,7 @@ export function toast(message: string, action?: ToastAction): void {
     },
   }, action.label));
   el.hidden = false;
-  toastTimer = setTimeout(() => (el.hidden = true), action ? 7000 : 3500);
+  toastTimer = setTimeout(() => (el.hidden = true), tone === 'alert' ? 10000 : action ? 7000 : 3500);
 }
 
 export const number = (n: number | null | undefined): string => (Number.isFinite(n) ? (n as number).toLocaleString() : '—');
