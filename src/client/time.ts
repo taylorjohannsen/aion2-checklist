@@ -110,7 +110,7 @@ export interface EventStatus {
 export const EVENTS: GameEvent[] = [
   { id: 'shugo', name: 'Shugo Festival', everyMin: 60, atMin: 0, openMin: 10, openLabel: 'on now', alert: true },
   { id: 'invasion', name: 'Dimensional Invasion', everyMin: 60, atMin: 30, openMin: 3, openLabel: 'join now', alert: true },
-  { id: 'rift', name: 'Spacetime Rift', everyMin: 180, atMin: 0, openMin: 10, openLabel: 'portal open' },
+  { id: 'rift', name: 'Spacetime Rift', everyMin: 180, atMin: 0, openMin: 10, openLabel: 'portal open', alert: true },
 ];
 
 export function eventStatus(event: GameEvent, now: number = Date.now()): EventStatus {

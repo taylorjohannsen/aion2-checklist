@@ -52,7 +52,7 @@ function toggleSound(event: GameEvent): void {
   commit();
   syncSoundButtons();
   // play it once so the visitor hears what they turned on
-  if (on) void unlockSound().then(chime);
+  if (on) void unlockSound().then(() => chime(event.id));
 }
 
 function syncSoundButtons(): void {
@@ -90,7 +90,7 @@ function alertEvent(event: GameEvent, closes: number): void {
   if (!event.alert || alerted.get(event.id) === closes) return;
   alerted.set(event.id, closes);
   toast(`${event.name} is starting`, undefined, 'alert');
-  if (soundOn(event.id)) chime();
+  if (soundOn(event.id)) chime(event.id);
 }
 
 function tickTimers(now: number): void {
