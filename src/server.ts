@@ -104,7 +104,7 @@ interface NcGearDetail {
   enchantLevel?: number;
   maxEnchantLevel?: number;
   categoryName?: string;
-  mainStats?: { name?: string; value?: string; extra?: string }[];
+  mainStats?: { name?: string; value?: string; extra?: string; exceed?: boolean }[];
   subStats?: { name?: string; value?: string }[];
   magicStoneStat?: { name?: string; value?: string; grade?: string }[];
   godStoneStat?: { name?: string; desc?: string; grade?: string }[];
@@ -428,7 +428,7 @@ const routes: Record<string, Route> = {
         category: text(data.categoryName, 40),
         enchant: Number(data.enchantLevel) || 0,
         maxEnchant: Number(data.maxEnchantLevel) || 0,
-        mainStats: list(data.mainStats, 12).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20), extra: text(s.extra, 20) })),
+        mainStats: list(data.mainStats, 12).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20), extra: text(s.extra, 20), exceed: Boolean(s.exceed) })),
         subStats: list(data.subStats, 12).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20) })),
         manastones: list(data.magicStoneStat, 8).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20), grade: text(s.grade, 20) })),
         godstones: list(data.godStoneStat, 4).map((s) => ({ name: text(s.name, 80), desc: text(s.desc, 600), grade: text(s.grade, 20) })),

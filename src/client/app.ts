@@ -1,4 +1,4 @@
-import { h, clear, $, toast, number, timeAgo, avatar, type Child } from './dom.js';
+import { h, clear, $, toast, number, timeAgo, avatar } from './dom.js';
 import * as store from './store.js';
 import type { Character, Tab } from './store.js';
 import { api, type CharacterInfo, type CharacterRef, type RegionId, type SearchHit } from './api.js';
@@ -31,7 +31,7 @@ function control<T extends HTMLInputElement | HTMLSelectElement>(form: HTMLFormE
   return el as T;
 }
 
-// ---------- header timers ----------
+// ---------- timers ----------
 
 // When a section's tasks next clear. Sieges run on the active character's server clock.
 function resetAt(period: Period, now: number): number {
@@ -40,11 +40,6 @@ function resetAt(period: Period, now: number): number {
   const c = active();
   return nextSiege(now, c ? store.regionOf(state, c.id) : state.ui.region);
 }
-
-const countdowns: { id: Period; label: string; next: (now?: number) => number }[] = [
-  { id: 'daily', label: 'Daily reset', next: nextDailyReset },
-  { id: 'weekly', label: 'Weekly reset', next: nextWeeklyReset },
-];
 
 const soundOn = (id: string): boolean => state.ui.sound.includes(id);
 
@@ -64,11 +59,11 @@ function syncSoundButtons(): void {
 }
 
 function buildTimers(): void {
-  const timer = (id: string, label: string, kind: 'reset' | 'event', extra?: Child) =>
-    h('div', { class: `timer timer-${kind}`, id: `timer-${id}` },
-      h('span', { class: 'timer-label' }, label),
+  const timer = (e: GameEvent) =>
+    h('div', { class: 'timer', id: `timer-${e.id}` },
+      h('span', { class: 'timer-label' }, e.name),
       h('span', { class: 'timer-value' }, '…'),
-      extra);
+      e.alert && soundButton(e));
   const soundButton = (e: GameEvent) =>
     h('button', {
       type: 'button',
@@ -78,10 +73,7 @@ function buildTimers(): void {
       title: 'Sound',
       onclick: () => toggleSound(e),
     });
-  clear($('#timers'),
-    h('div', { class: 'timer-group', 'aria-label': 'Resets' }, countdowns.map((c) => timer(c.id, c.label, 'reset'))),
-    h('div', { class: 'timer-group', 'aria-label': 'Events' },
-      EVENTS.map((e) => timer(e.id, e.name, 'event', e.alert && soundButton(e)))));
+  clear($('#timers'), h('div', { class: 'timer-group', 'aria-label': 'Events' }, EVENTS.map(timer)));
 }
 
 // The window each event last alerted for, keyed by when it closes. Seeded with
@@ -96,12 +88,6 @@ function alertEvent(event: GameEvent, closes: number): void {
 }
 
 function tickTimers(now: number): void {
-  for (const c of countdowns) {
-    const at = c.next(now);
-    const el = $(`#timer-${c.id}`);
-    $('.timer-value', el).textContent = formatDuration(at - now);
-    el.title = `${c.label}: ${formatLocalTime(at)} your time`;
-  }
   for (const event of EVENTS) {
     const status = eventStatus(event, now);
     const el = $(`#timer-${event.id}`);

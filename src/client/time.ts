@@ -108,7 +108,7 @@ export interface EventStatus {
 
 // Recurring world events, in UTC. Community-reported, and the same on every Global region.
 export const EVENTS: GameEvent[] = [
-  { id: 'shugo', name: 'Shugo Festival', everyMin: 60, atMin: 0, openMin: 10, openLabel: 'on now', alert: true },
+  { id: 'shugo', name: 'Shugo Festival', everyMin: 60, atMin: 0, openMin: 3, openLabel: 'on now', alert: true },
   { id: 'invasion', name: 'Dimensional Invasion', everyMin: 60, atMin: 30, openMin: 3, openLabel: 'join now', alert: true },
   { id: 'rift', name: 'Spacetime Rift', everyMin: 180, atMin: 0, openMin: 10, openLabel: 'portal open', alert: true },
 ];

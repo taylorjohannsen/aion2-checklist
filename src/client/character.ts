@@ -60,6 +60,7 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
   let tipFor: HTMLElement | null = null;
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
   let hoverRow: HTMLElement | null = null;
+  let cursor: { x: number; y: number } | null = null;
   // The window can open under a resting mouse; hover only counts once it moves
   let mouseMoved = false;
   clear(dialog, body, tip);
@@ -121,21 +122,23 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
       h('header', { class: 'armory-head' },
         avatar(c ?? preview, 'large'),
         h('div', { class: 'armory-who' },
-          h('h2', { id: 'armory-name' }, c?.name ?? preview.name ?? ''),
+          h('div', { class: 'armory-name' },
+            h('h2', { id: 'armory-name' }, c?.name ?? preview.name ?? ''),
+            c && (isTracked(c)
+              ? h('span', { class: 'armory-tracked' }, '✓ In your checklist')
+              : h('button', {
+                class: 'armory-add',
+                type: 'button',
+                onclick: () => {
+                  track(c);
+                  render();
+                },
+              }, '+ Add to checklist'))),
           c && h('p', { class: 'muted' }, [`Lv ${c.level}`, c.className, c.serverName, REGIONS.find((r) => r.id === c.region)?.label, c.race].filter(Boolean).join(' · ')),
           c?.title && h('p', { class: `small ${gradeClass(c.title.grade)}` }, c.title.name)),
         c && h('dl', { class: 'armory-numbers' },
           h('div', {}, h('dt', {}, 'Combat Power'), h('dd', {}, number(c.combatPower))),
           h('div', {}, h('dt', {}, 'Item Level'), h('dd', {}, number(c.itemLevel)))),
-        c && !isTracked(c) && h('div', { class: 'armory-actions' },
-          h('button', {
-            class: 'button small',
-            type: 'button',
-            onclick: () => {
-              track(c);
-              render();
-            },
-          }, 'Add to checklist')),
         h('button', { class: 'icon-button armory-close', type: 'button', 'aria-label': 'Close', onclick: () => dialog.close() }, '×')),
       h('div', { class: 'armory-tabs', role: 'tablist', 'aria-label': 'Character' },
         VIEWS.map((v) => h('button', {
@@ -194,20 +197,21 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
         h('h3', { class: 'list-title' }, 'Accessories'),
         ACCESSORY_SLOTS.map(([slot, label]) => slotRow(bySlot.get(slot), label)),
         others.map((g) => slotRow(g, g.slotName))),
-      h('section', { class: 'gear-group gear-wide' },
-        h('h3', { class: 'list-title' }, 'Arcana'),
-        h('div', { class: 'gear-row' }, ARCANA_SLOTS.map((slot) => slotRow(bySlot.get(slot), 'Arcana')))),
-      (a.wing || a.pet) && h('section', { class: 'gear-group gear-wide' },
-        h('h3', { class: 'list-title' }, 'Wings and pet'),
-        h('div', { class: 'gear-row' },
+      h('div', { class: 'gear-side' },
+        h('section', { class: 'gear-group' },
+          h('h3', { class: 'list-title' }, 'Arcana'),
+          ARCANA_SLOTS.map((slot) => slotRow(bySlot.get(slot), 'Arcana'))),
+        (a.wing || a.pet) && h('section', { class: 'gear-group' },
+          h('h3', { class: 'list-title' }, 'Wings and pet'),
           a.wing && plainRow(a.wing.icon, a.wing.name, a.wing.grade, 'Wings', a.wing.enchant),
           a.pet && plainRow(a.pet.icon, a.pet.name, '', `Pet · Lv ${a.pet.level}`, 0))));
   }
 
-  function gearIcon(icon: string, grade: string, enchant: number): HTMLElement {
+  function gearIcon(icon: string, grade: string, enchant: number, exceed = 0): HTMLElement {
     return h('span', { class: 'gear-icon', style: { '--tone': gradeKey(grade) ? `var(--grade-${gradeKey(grade)})` : 'var(--border-strong)' } },
       icon && h('img', { src: icon, alt: '', loading: 'lazy', decoding: 'async' }),
-      enchant > 0 && h('span', { class: 'gear-enchant' }, `+${enchant}`));
+      enchant > 0 && h('span', { class: 'gear-enchant' }, `+${enchant}`),
+      exceed > 0 && h('span', { class: 'gear-exceed', title: `Exceeded ${exceed} time${exceed === 1 ? '' : 's'}` }, String(exceed)));
   }
 
   function slotText(name: string, grade: string, label: string): HTMLElement {
@@ -225,12 +229,18 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
       return h('div', { class: 'gear-slot is-empty' }, h('span', { class: 'gear-icon' }), slotText('Empty', '', label));
     }
     const row = h('button', { class: 'gear-slot', type: 'button' },
-      gearIcon(piece.icon, piece.grade, piece.enchant),
+      gearIcon(piece.icon, piece.grade, piece.enchant, piece.exceed),
       slotText(piece.name, piece.grade, label));
     // pointermove rather than pointerenter, so a row the mouse was resting on when the
     // window opened still responds once it moves
     row.addEventListener('pointermove', (e) => {
-      if (e.pointerType !== 'mouse' || !mouseMoved || tipFor === row || hoverRow === row) return;
+      if (e.pointerType !== 'mouse' || !mouseMoved) return;
+      cursor = { x: e.clientX, y: e.clientY };
+      if (tipFor === row) {
+        place(row);
+        return;
+      }
+      if (hoverRow === row) return;
       clearTimeout(hoverTimer);
       hoverRow = row;
       // a short wait, so sweeping the mouse across the grid doesn't fetch every piece
@@ -245,9 +255,15 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
       hoverRow = null;
       hideTip(row);
     });
+    // touch and keyboard anchor the card to the row; only a mouse makes it follow
+    row.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse') cursor = null;
+    });
     row.addEventListener('click', () => showTip(row, piece));
     row.addEventListener('focus', () => {
-      if (row.matches(':focus-visible')) showTip(row, piece);
+      if (!row.matches(':focus-visible')) return;
+      cursor = null;
+      showTip(row, piece);
     });
     row.addEventListener('blur', () => hideTip(row));
     return row;
@@ -303,9 +319,9 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
 
   function fillTip(piece: GearPiece, d: GearDetail | null, failed = false): void {
     const enchant = piece.enchant || d?.maxEnchant ? `+${piece.enchant}${d?.maxEnchant ? ` / ${d.maxEnchant}` : ''}` : '';
-    const line = (name: string, value: string, extra = '', grade = '') =>
+    const line = (name: string, value: string, extra = '', grade = '', exceeded = false) =>
       h('div', { class: 'tip-line' },
-        h('span', { class: gradeClass(grade) }, name),
+        h('span', { class: exceeded ? 'tip-exceed' : gradeClass(grade) }, name),
         h('span', { class: 'tip-value' }, value, extra && h('span', { class: 'tip-extra' }, ` ${extra}`)));
     const section = (title: string | null, ...children: Child[]) =>
       h('div', { class: 'tip-section' }, title && h('p', { class: 'tip-title' }, title), children);
@@ -315,17 +331,18 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
         gearIcon(piece.icon, piece.grade, 0),
         h('div', {},
           h('p', { class: `tip-name ${gradeClass(piece.grade)}` }, piece.name),
-          h('p', { class: 'muted small' }, [d?.category, piece.grade, enchant, piece.exceed > 0 && `Exceed ${piece.exceed}`].filter(Boolean).join(' · ')))),
+          h('p', { class: 'muted small' }, [d?.category, piece.grade, enchant].filter(Boolean).join(' · ')),
+          piece.exceed > 0 && h('p', { class: 'tip-exceed small' }, `Exceeded ${piece.exceed} time${piece.exceed === 1 ? '' : 's'}`))),
       !d && h('p', { class: 'muted small' }, failed ? 'Couldn’t load the details' : 'Loading…'),
       d && d.mainStats.length > 0 && section(null,
         // the enchant bonus, which NC sends as "0" or "0%" when there is none
-        d.mainStats.map((s) => line(s.name, s.value, parseFloat(s.extra) ? `+${s.extra}` : ''))),
+        d.mainStats.map((s) => line(s.name, s.value, parseFloat(s.extra) ? `+${s.extra}` : '', '', s.exceed))),
       d && d.subStats.length > 0 && section('Bonus stats', d.subStats.map((s) => line(s.name, `+${s.value}`))),
       d && d.manastones.length > 0 && section('Manastones', d.manastones.map((s) => line(s.name, s.value, '', s.grade))),
       d?.godstones.map((g) => section(null,
         h('p', { class: `tip-strong ${gradeClass(g.grade)}` }, g.name),
         h('p', { class: 'tip-desc' }, g.desc))),
-      d && d.subSkills.length > 0 && section('Skills', d.subSkills.map((s) => line(s.name, `Lv ${s.level}`))),
+      d && d.subSkills.length > 0 && section('Skills', h('div', { class: 'tip-skills' }, d.subSkills.map((s) => line(s.name, `Lv ${s.level}`)))),
       set && section(`${set.name} · ${set.equipped}/${set.total}`,
         set.bonuses.map((b) => h('p', { class: `tip-bonus${b.count <= set.equipped ? ' is-active' : ''}` },
           h('span', { class: 'tip-count' }, String(b.count)),
@@ -334,11 +351,19 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
     if (tipFor) place(tipFor);
   }
 
-  // Beside the row when there's room, otherwise below or above it
+  // Beside the mouse when one is hovering, otherwise beside the row, or below or above it
   function place(row: HTMLElement): void {
-    const r = row.getBoundingClientRect();
     const w = tip.offsetWidth;
     const ht = tip.offsetHeight;
+    if (cursor) {
+      const offset = 18;
+      let left = cursor.x + offset;
+      if (left + w > innerWidth - 8) left = cursor.x - w - offset;
+      tip.style.left = `${Math.max(8, left)}px`;
+      tip.style.top = `${Math.max(8, Math.min(cursor.y + offset, innerHeight - ht - 8))}px`;
+      return;
+    }
+    const r = row.getBoundingClientRect();
     const gap = 10;
     let left = r.right + gap;
     if (left + w > innerWidth - 8) left = r.left - w - gap;
@@ -360,7 +385,7 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
     if (!a.skills.length) return h('p', { class: 'armory-state muted' }, 'No skills learned');
     return h('div', { class: 'skills' },
       SKILL_GROUPS.map((g) => {
-        const skills = a.skills.filter((s) => s.group === g.id);
+        const skills = a.skills.filter((s) => s.group === g.id).sort((x, y) => y.level - x.level);
         return skills.length > 0 && h('section', {},
           h('h3', { class: 'list-title' }, g.label),
           h('ul', { class: 'skill-list' }, skills.map((s) =>
@@ -380,12 +405,13 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
           h('span', { class: 'stat-card-name' }, s.name, s.god && h('span', { class: 'muted' }, ` · ${s.god}`)),
           h('span', { class: 'stat-card-value' }, s.value)),
         s.effects.length > 0 && h('ul', { class: 'stat-effects' }, s.effects.map((e) => h('li', {}, e))));
-    const group = (title: string, stats: StatLine[]) => stats.length > 0 && h('section', {},
-      h('h3', { class: 'list-title' }, title),
-      h('div', { class: 'stat-grid' }, stats.map(card)));
-    return h('div', { class: 'stat-panels' },
-      group('Primary', a.stats.filter((s) => s.group === 'primary')),
-      group('Deity', a.stats.filter((s) => s.group === 'deity')));
+    const group = (title: string, id: StatLine['group']) => {
+      const stats = a.stats.filter((s) => s.group === id);
+      return stats.length > 0 && h('section', {},
+        h('h3', { class: 'list-title' }, title),
+        h('div', { class: `stat-grid stat-grid-${id}` }, stats.map(card)));
+    };
+    return h('div', { class: 'stat-panels' }, group('Primary', 'primary'), group('Deity', 'deity'));
   }
 
   return { open };

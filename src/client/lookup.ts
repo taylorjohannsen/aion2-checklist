@@ -113,7 +113,11 @@ export function initLookup({ root, getRegion, setRegion, onPick }: {
           class: 'lookup-row',
           type: 'button',
           onclick: () => {
+            // start fresh for the next lookup
+            input.value = '';
+            lastQuery = '';
             results.hidden = true;
+            clear(results);
             input.blur();
             onPick(hit);
           },

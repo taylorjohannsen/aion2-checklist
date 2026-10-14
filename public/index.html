@@ -23,18 +23,15 @@
         <p class="muted small">Global servers</p>
       </div>
     </div>
-    <div class="timers" id="timers" aria-live="off"></div>
+    <div id="lookup" class="lookup-slot"></div>
   </header>
 
   <section class="roster" id="roster" aria-label="Characters"></section>
 
-  <div class="tabbar">
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button type="button" role="tab" id="tab-checklist" data-tab="checklist" aria-controls="view-checklist" aria-selected="true">Checklist</button>
-      <button type="button" role="tab" id="tab-items" data-tab="items" aria-controls="view-items" aria-selected="false" tabindex="-1">Items</button>
-    </nav>
-    <div id="lookup" class="lookup-slot"></div>
-  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-checklist" data-tab="checklist" aria-controls="view-checklist" aria-selected="true">Checklist</button>
+    <button type="button" role="tab" id="tab-items" data-tab="items" aria-controls="view-items" aria-selected="false" tabindex="-1">Items</button>
+  </nav>
 
   <main id="main">
     <section id="view-checklist" role="tabpanel" aria-labelledby="tab-checklist"></section>
@@ -42,12 +39,15 @@
   </main>
 
   <footer class="footer">
-    <p id="reset-hint"></p>
-    <p class="footer-backup">
-      <span>Progress is saved in this browser only.</span>
-      <button type="button" class="link-button" id="export-backup">Export backup</button>
-      <label class="link-button file-button">Import backup<input type="file" id="import-backup" accept="application/json,.json"></label>
-    </p>
+    <div class="footer-text">
+      <p id="reset-hint"></p>
+      <p class="footer-backup">
+        <span>Progress is saved in this browser only.</span>
+        <button type="button" class="link-button" id="export-backup">Export backup</button>
+        <label class="link-button file-button">Import backup<input type="file" id="import-backup" accept="application/json,.json"></label>
+      </p>
+    </div>
+    <div class="timers" id="timers" aria-live="off"></div>
   </footer>
 
   <dialog id="add-dialog" aria-labelledby="add-title">

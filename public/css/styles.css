@@ -94,7 +94,7 @@ body {
 
 .topbar,
 .roster,
-.tabbar,
+.tabs,
 main,
 .footer {
   width: min(1200px, 100% - 32px);
@@ -329,6 +329,7 @@ textarea:focus {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .brand img {
@@ -378,10 +379,6 @@ textarea:focus {
   margin-top: auto;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-}
-
-.timer-reset .timer-value {
-  color: var(--accent);
 }
 
 .timer.is-open {
@@ -590,25 +587,16 @@ textarea:focus {
 
 /* ---------- tabs ---------- */
 
-.tabbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
 .tabs {
   display: flex;
   gap: 4px;
+  border-bottom: 1px solid var(--border);
 }
 
 /* ---------- character lookup ---------- */
 
 .lookup-slot {
-  width: min(380px, 100%);
-  margin-bottom: 6px;
+  width: min(480px, 100%);
 }
 
 .lookup {
@@ -662,9 +650,9 @@ textarea:focus {
 .lookup-results {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   z-index: 15;
-  width: min(380px, calc(100vw - 32px));
+  width: 100%;
   max-height: min(420px, 60vh);
   overflow-y: auto;
   padding: 6px;
@@ -1572,9 +1560,11 @@ dialog::backdrop {
 
 /* ---------- character window ---------- */
 
+/* sized to its content, with a floor so switching tabs doesn't make it jump */
 dialog.armory {
-  width: min(980px, 100% - 24px);
-  height: min(780px, 100vh - 48px);
+  width: min(1240px, 100% - 32px);
+  min-height: min(820px, 100vh - 32px);
+  max-height: calc(100vh - 32px);
   padding: 0;
   overflow: hidden;
 }
@@ -1597,7 +1587,7 @@ dialog.armory[open] {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 18px;
-  padding: 20px 56px 14px 20px;
+  padding: 16px 56px 12px 20px;
   background: linear-gradient(180deg, var(--surface-2), var(--surface));
 }
 
@@ -1639,13 +1629,6 @@ dialog.armory[open] {
   color: var(--accent);
 }
 
-.armory-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-}
-
 .armory-close {
   position: absolute;
   top: 14px;
@@ -1657,6 +1640,43 @@ dialog.armory[open] {
   gap: 4px;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
+}
+
+.armory-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.armory-add,
+.armory-tracked {
+  /* sits on the name's baseline rather than its centre */
+  position: relative;
+  top: 2px;
+  padding: 2px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.armory-add {
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.armory-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.armory-tracked {
+  border-color: color-mix(in srgb, var(--done) 40%, transparent);
+  color: var(--done);
 }
 
 .armory-tabs [role="tab"] {
@@ -1706,24 +1726,14 @@ dialog.armory[open] {
 
 .gear {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0 20px;
-}
-
-.gear-wide {
-  grid-column: 1 / -1;
 }
 
 .gear-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.gear-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 4px;
+  gap: 2px;
 }
 
 .gear-slot {
@@ -1731,11 +1741,12 @@ dialog.armory[open] {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 5px 8px 5px 5px;
+  padding: 4px 8px 4px 4px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: none;
   text-align: left;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 button.gear-slot {
@@ -1751,8 +1762,8 @@ button.gear-slot[aria-describedby] {
 .gear-icon {
   position: relative;
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border: 1px solid color-mix(in srgb, var(--tone, var(--border-strong)) 70%, transparent);
   border-radius: 9px;
   background:
@@ -1763,7 +1774,44 @@ button.gear-slot[aria-describedby] {
 .gear-icon img {
   width: 100%;
   height: 100%;
+  /* arcana art fills the square, so round it to sit inside the frame */
+  border-radius: 8px;
   object-fit: contain;
+}
+
+/* how many times the item has been exceeded */
+.gear-exceed {
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 4px 0 2px;
+  border: 1px solid color-mix(in srgb, var(--teal) 60%, transparent);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gear-exceed::before,
+.tip-exceed::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1l3 8 8 3-8 3-3 8-3-8-8-3 8-3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.tip-exceed {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--teal);
 }
 
 .gear-enchant {
@@ -1825,6 +1873,17 @@ button.gear-slot[aria-describedby] {
   pointer-events: none;
 }
 
+.gear-tip:not([hidden]) {
+  animation: tip-in 0.14s ease-out;
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
 .gear-tip[hidden] {
   display: none;
 }
@@ -1871,6 +1930,10 @@ button.gear-slot[aria-describedby] {
   color: var(--done);
 }
 
+.tip-skills {
+  color: var(--grade-epic);
+}
+
 .tip-strong {
   font-weight: 650;
 }
@@ -1908,6 +1971,26 @@ button.gear-slot[aria-describedby] {
 .tip-bonus.is-active .tip-count {
   background: var(--done-soft);
   color: var(--done);
+}
+
+/* arcana and wings share the third column; below desktop width they sit side by side underneath */
+.gear-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 1000px) {
+  .gear {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gear-side {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+  }
 }
 
 /* skills */
@@ -1966,10 +2049,21 @@ button.gear-slot[aria-describedby] {
 
 /* stats */
 
+/* the six primary stats in one row, the ten deity stats in two */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px;
+}
+
+@media (min-width: 1001px) {
+  .stat-grid-primary {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .stat-grid-deity {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 .stat-card {
@@ -2009,12 +2103,20 @@ button.gear-slot[aria-describedby] {
 
 .footer {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
   padding: 18px 0 40px;
   border-top: 1px solid var(--border);
   font-size: 13px;
   color: var(--muted);
+}
+
+.footer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .footer-backup {
@@ -2088,9 +2190,7 @@ button.gear-slot[aria-describedby] {
   }
 
   .lookup-slot {
-    order: -1;
     width: 100%;
-    margin: 0 0 4px;
   }
 
   .timer {
@@ -2143,9 +2243,11 @@ button.gear-slot[aria-describedby] {
   }
 
   .gear,
+  .gear-side,
   .skills {
     grid-template-columns: 1fr;
   }
+
 
   .char {
     width: 220px;
@@ -2177,6 +2279,7 @@ button.gear-slot[aria-describedby] {
   *,
   *::before,
   *::after {
+    animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
   }

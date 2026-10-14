@@ -102,7 +102,8 @@ export interface GearDetail {
   category: string;
   enchant: number;
   maxEnchant: number;
-  mainStats: { name: string; value: string; extra: string }[];
+  /** `exceed` marks a stat that exceeding the item added */
+  mainStats: { name: string; value: string; extra: string; exceed: boolean }[];
   subStats: { name: string; value: string }[];
   manastones: { name: string; value: string; grade: string }[];
   godstones: { name: string; desc: string; grade: string }[];
