@@ -409,7 +409,7 @@ function taskCard(c: Character, task: ResolvedTask): HTMLElement {
       h('img', { class: 'task-icon', src: iconURL(task.icon), alt: '', width: 48, height: 48, decoding: 'async' }),
       h('span', { class: 'task-check', 'aria-hidden': 'true' }, '✓')),
     h('span', { class: 'task-text' },
-      h('span', { class: 'task-name' }, task.name, task.max > 1 && h('span', { class: 'task-times' }, `×${task.max}`))));
+      h('span', { class: 'task-name' }, task.name, task.max > 1 && h('span', { class: 'task-times' }, `×${number(task.max)}`))));
 
   // a mouse target only; the main button already toggles for keyboards and screen readers
   const box = h('button', { class: 'task-toggle', type: 'button', tabindex: '-1', 'aria-hidden': 'true', onclick: () => toggle(task) });

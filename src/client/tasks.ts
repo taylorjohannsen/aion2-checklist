@@ -27,6 +27,7 @@ export const DEFAULT_TASKS: Task[] = [
   { id: 'trial', name: 'Ascension Trial', period: 'weekly', max: 3, icon: 'ascension', note: 'Run last, at your best item level' },
   { id: 'fissure', name: 'Daily Dungeon', period: 'weekly', max: 14, icon: 'fissure', note: 'Unknown Fissure' },
   { id: 'odyle-craft', name: 'Odyle Craft', period: 'weekly', max: 20, icon: 'odyle-raw', note: 'Substance Morph' },
+  { id: 'soul-crystal', name: 'Soul Crystal Craft', period: 'weekly', max: 1000, icon: 'soul-crystal', note: 'Substance Morph' },
   { id: 'sub-shop', name: 'Odyle Sub Shop', period: 'weekly', max: 1, icon: 'odyle-small', note: 'Buy this week’s Odyle' },
   { id: 'pvp-command', name: 'PvP Command Quests', period: 'weekly', max: 20, icon: 'pvp', note: 'From the Abyss Command Merchant' },
   { id: 'corridors', name: 'Abyss Corridors', period: 'siege', max: 1, icon: 'corridor', note: 'Open after your side wins an Artifact Siege' },
@@ -39,4 +40,4 @@ export const PERIODS: { id: Period; label: string }[] = [
   { id: 'siege', label: 'Siege' },
 ];
 
-export const MAX_COUNT = 99;
+export const MAX_COUNT = 9999;

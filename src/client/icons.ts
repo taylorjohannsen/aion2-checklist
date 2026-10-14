@@ -30,6 +30,7 @@ export const ICONS = {
   amplify: { file: 'Icon_Item_Enchant_AmplifyFragment_A_001.png', label: 'Amplify fragment' },
   soulstone: { file: 'Icon_Item_Usable_Enchant_SoulStone_Abyss_A_r_003.png', label: 'Abyss soulstone' },
   radiant: { file: 'Icon_Item_Gather_Elevate_ExtractOd_A_003.png', label: 'Burning Odyle' },
+  'soul-crystal': { file: 'Icon_Item_Soulcrystal_All.png', label: 'Soul Crystal' },
   kisk: { file: 'Icon_Kisk_Setup_Party_D_02.png', label: 'Kisk' },
   'fire-temple': { file: 'icon_AD_pic_A_u_Fire_Temple.png', label: 'Fire Temple' },
   'krao-cave': { file: 'icon_AD_pic_A_u_KraoCave.png', label: 'Krao Cave' },
