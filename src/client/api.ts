@@ -56,7 +56,61 @@ export interface ServerInfo {
   race: string;
 }
 
-interface CharacterRef {
+export interface StatLine {
+  name: string;
+  /** the god a deity stat belongs to, e.g. "Nezekan"; empty for primary stats */
+  god: string;
+  group: 'primary' | 'deity';
+  value: number;
+  effects: string[];
+}
+
+export interface GearPiece {
+  /** NC's slot number; 41-45 are arcana */
+  slot: number;
+  slotName: string;
+  id: number;
+  name: string;
+  grade: string;
+  icon: string;
+  enchant: number;
+  exceed: number;
+}
+
+export interface SkillInfo {
+  name: string;
+  icon: string;
+  group: 'active' | 'passive' | 'stigma';
+  level: number;
+  equipped: boolean;
+}
+
+export interface Armory {
+  character: CharacterInfo;
+  stats: StatLine[];
+  gear: GearPiece[];
+  wing: { name: string; grade: string; icon: string; enchant: number } | null;
+  pet: { name: string; icon: string; level: number } | null;
+  skills: SkillInfo[];
+}
+
+export interface GearDetail {
+  id: number;
+  name: string;
+  grade: string;
+  icon: string;
+  category: string;
+  enchant: number;
+  maxEnchant: number;
+  mainStats: { name: string; value: string; extra: string }[];
+  subStats: { name: string; value: string }[];
+  manastones: { name: string; value: string; grade: string }[];
+  godstones: { name: string; desc: string; grade: string }[];
+  subSkills: { name: string; level: number; icon: string }[];
+  set: { name: string; equipped: number; total: number; bonuses: { count: number; text: string[] }[] } | null;
+}
+
+export interface CharacterRef {
   region?: RegionId | undefined;
   serverId?: number | undefined;
   characterId?: string | undefined;
@@ -81,4 +135,15 @@ export const api = {
   character: ({ region, serverId, characterId }: CharacterRef) =>
     get<CharacterInfo>('/api/character', { region: String(region), serverId: String(serverId), characterId: String(characterId) }),
   item: (id: number) => get<ItemInfo>('/api/item', { id: String(id) }),
+  armory: ({ region, serverId, characterId }: CharacterRef) =>
+    get<Armory>('/api/armory', { region: String(region), serverId: String(serverId), characterId: String(characterId) }),
+  gear: ({ region, serverId, characterId }: CharacterRef, piece: GearPiece) =>
+    get<GearDetail>('/api/armory/item', {
+      region: String(region),
+      serverId: String(serverId),
+      characterId: String(characterId),
+      id: String(piece.id),
+      enchantLevel: String(piece.enchant),
+      slotPos: String(piece.slot),
+    }),
 };

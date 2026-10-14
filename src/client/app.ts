@@ -1,11 +1,13 @@
-import { h, clear, $, toast, number, timeAgo, type Child } from './dom.js';
+import { h, clear, $, toast, number, timeAgo, avatar, type Child } from './dom.js';
 import * as store from './store.js';
 import type { Character, Tab } from './store.js';
-import { api, type RegionId, type SearchHit } from './api.js';
+import { api, type CharacterInfo, type CharacterRef, type RegionId, type SearchHit } from './api.js';
 import { ICONS, iconURL } from './icons.js';
 import { PERIODS, MAX_COUNT, type Period, type ResolvedTask } from './tasks.js';
 import { EVENTS, eventStatus, type GameEvent, formatDuration, formatLocalTime, nextDailyReset, nextSiege, nextWeeklyReset } from './time.js';
 import { initItems } from './items.js';
+import { initCharacterWindow } from './character.js';
+import { initLookup } from './lookup.js';
 import { chime, unlockSound } from './sound.js';
 
 let state = store.loadState();
@@ -120,19 +122,6 @@ function tickTimers(now: number): void {
 }
 
 // ---------- characters ----------
-
-function avatar(c: { name?: string; portrait?: string | undefined }, size = ''): HTMLElement {
-  const initial = h('span', { class: `avatar avatar-initial ${size}`, 'aria-hidden': 'true' }, (c.name || '?').slice(0, 1).toUpperCase());
-  if (!c.portrait) return initial;
-  return h('img', {
-    class: `avatar ${size}`,
-    src: c.portrait,
-    alt: '',
-    loading: 'lazy',
-    decoding: 'async',
-    onerror: (e: Event) => (e.currentTarget as Element).replaceWith(initial),
-  });
-}
 
 const characterMeta = (c: Character): string =>
   [c.className, c.level ? `Lv ${c.level}` : null, c.serverName].filter(Boolean).join(' · ');
@@ -333,8 +322,16 @@ function renderCharacterDialog(): void {
       h('input', { id: 'rename-input', name: 'charName', value: c.name, maxlength: 40, required: true, autocomplete: 'off' }),
       h('button', { class: 'button small', type: 'submit' }, 'Save')),
     h('div', { class: 'dialog-actions' },
+      c.characterId && h('button', {
+        class: 'button',
+        type: 'button',
+        onclick: () => {
+          $<HTMLDialogElement>('#char-dialog').close();
+          openCharacter(c, c);
+        },
+      }, 'View character'),
       c.characterId
-        ? h('button', { class: 'button', type: 'button', onclick: () => refreshCharacter(c.id) }, 'Refresh from NCSOFT')
+        ? h('button', { class: 'button ghost', type: 'button', onclick: () => refreshCharacter(c.id) }, 'Refresh from NCSOFT')
         : h('button', { class: 'button', type: 'button', onclick: () => openAddDialog({ link: c.id, name: c.placeholder ? '' : c.name }) }, 'Link to NCSOFT'),
       h('button', { class: 'button ghost', type: 'button', disabled: index === 0, onclick: () => moveCharacter(c.id, -1) }, 'Move left'),
       h('button', { class: 'button ghost', type: 'button', disabled: index === state.characters.length - 1, onclick: () => moveCharacter(c.id, 1) }, 'Move right'),
@@ -622,6 +619,49 @@ async function importBackup(e: Event): Promise<void> {
   }
 }
 
+// ---------- character window and lookup ----------
+
+const tracked = (info: CharacterInfo): Character | undefined => state.characters.find((c) => store.sameCharacter(c, info));
+
+const characterWindow = initCharacterWindow({
+  dialog: $<HTMLDialogElement>('#armory-dialog'),
+  isTracked: (info) => Boolean(tracked(info)),
+  track: (info) => {
+    const character = store.addCharacter(state, { ...info, updatedAt: Date.now() });
+    commit();
+    renderRoster();
+    renderChecklist();
+    toast(`${character.name} added`);
+  },
+  onLoad: (info) => {
+    const c = tracked(info);
+    if (!c) return;
+    store.updateCharacter(state, c.id, { ...info, updatedAt: Date.now() });
+    commit();
+    renderRoster();
+  },
+  onClose: () => history.replaceState(null, '', tabHash(state.ui.tab)),
+});
+
+const characterHash = (ref: CharacterRef): string =>
+  `#character/${ref.region}/${ref.serverId}/${encodeURIComponent(ref.characterId ?? '')}`;
+
+function openCharacter(ref: CharacterRef, preview?: { name?: string; portrait?: string | undefined }): void {
+  if (!ref.region || !ref.serverId || !ref.characterId) return;
+  history.replaceState(null, '', characterHash(ref));
+  characterWindow.open(ref, preview && { name: preview.name ?? '', portrait: preview.portrait ?? '' });
+}
+
+initLookup({
+  root: $('#lookup'),
+  getRegion: () => state.ui.region,
+  setRegion: (region) => {
+    state.ui.region = region;
+    commit();
+  },
+  onPick: (hit) => openCharacter(hit, hit),
+});
+
 // ---------- tabs and routing ----------
 
 const items = initItems({
@@ -643,12 +683,26 @@ function showTab(tab: Tab, { updateHash = true } = {}): void {
   $('#view-checklist').hidden = tab !== 'checklist';
   $('#view-items').hidden = tab !== 'items';
   if (tab === 'items') void items.show();
-  if (updateHash) history.replaceState(null, '', tab === 'items' ? '#items' : location.pathname + location.search);
+  if (updateHash) history.replaceState(null, '', tabHash(tab));
+}
+
+function tabHash(tab: Tab): string {
+  return tab === 'items' ? '#items' : location.pathname + location.search;
 }
 
 function route(): void {
   const key = location.hash.match(/^#item\/(.+)$/)?.[1];
-  if (key) {
+  const who = location.hash.match(/^#character\/([a-z]+)\/(\d{4})\/(.+)$/);
+  const region = store.REGIONS.find((r) => r.id === who?.[1])?.id;
+  if (who && region) {
+    let characterId = '';
+    try {
+      characterId = decodeURIComponent(who[3] ?? '');
+    } catch {
+      return;
+    }
+    openCharacter({ region, serverId: Number(who[2]), characterId });
+  } else if (key) {
     showTab('items', { updateHash: false });
     void items.open(decodeURIComponent(key));
   } else if (location.hash === '#items') {

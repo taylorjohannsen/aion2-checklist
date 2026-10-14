@@ -88,6 +88,20 @@ export function toast(message: string, action?: ToastAction, tone?: 'alert'): vo
   toastTimer = setTimeout(() => (el.hidden = true), tone === 'alert' ? 10000 : action ? 7000 : 3500);
 }
 
+// A character's portrait, or their initial when there's none or it fails to load
+export function avatar(c: { name?: string | undefined; portrait?: string | undefined }, size = ''): HTMLElement {
+  const initial = h('span', { class: `avatar avatar-initial ${size}`, 'aria-hidden': 'true' }, (c.name || '?').slice(0, 1).toUpperCase());
+  if (!c.portrait) return initial;
+  return h('img', {
+    class: `avatar ${size}`,
+    src: c.portrait,
+    alt: '',
+    loading: 'lazy',
+    decoding: 'async',
+    onerror: (e: Event) => (e.currentTarget as Element).replaceWith(initial),
+  });
+}
+
 export const number = (n: number | null | undefined): string => (Number.isFinite(n) ? (n as number).toLocaleString() : '—');
 
 export function timeAgo(ts: number): string {

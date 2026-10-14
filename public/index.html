@@ -28,10 +28,13 @@
 
   <section class="roster" id="roster" aria-label="Characters"></section>
 
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button type="button" role="tab" id="tab-checklist" data-tab="checklist" aria-controls="view-checklist" aria-selected="true">Checklist</button>
-    <button type="button" role="tab" id="tab-items" data-tab="items" aria-controls="view-items" aria-selected="false" tabindex="-1">Items</button>
-  </nav>
+  <div class="tabbar">
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" id="tab-checklist" data-tab="checklist" aria-controls="view-checklist" aria-selected="true">Checklist</button>
+      <button type="button" role="tab" id="tab-items" data-tab="items" aria-controls="view-items" aria-selected="false" tabindex="-1">Items</button>
+    </nav>
+    <div id="lookup" class="lookup-slot"></div>
+  </div>
 
   <main id="main">
     <section id="view-checklist" role="tabpanel" aria-labelledby="tab-checklist"></section>
@@ -87,6 +90,8 @@
     </div>
     <div id="char-body"></div>
   </dialog>
+
+  <dialog id="armory-dialog" class="armory" aria-labelledby="armory-name"></dialog>
 
   <dialog id="tasks-dialog" class="wide" aria-labelledby="tasks-title">
     <div class="dialog-head">

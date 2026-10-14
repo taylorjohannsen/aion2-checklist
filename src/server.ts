@@ -71,7 +71,50 @@ interface NcCharacter {
     titleName?: string;
     titleGrade?: string;
   };
-  stat?: { statList?: { type: string; value: number }[] };
+  stat?: { statList?: { type: string; name?: string; value: number; statSecondList?: string[] | null }[] };
+}
+
+interface NcGear {
+  id: number;
+  name: string;
+  grade?: string;
+  icon?: string;
+  enchantLevel?: number;
+  exceedLevel?: number;
+  slotPos: number;
+  slotPosName?: string;
+}
+
+interface NcEquipment {
+  equipment?: { equipmentList?: NcGear[] };
+  petwing?: {
+    pet?: { name?: string; icon?: string; level?: number } | null;
+    wing?: { name?: string; icon?: string; grade?: string; enchantLevel?: number } | null;
+  };
+  skill?: {
+    skillList?: { id: number; name: string; icon?: string; category?: string; skillLevel?: number; acquired?: number; equip?: number }[];
+  };
+}
+
+interface NcGearDetail {
+  id?: number;
+  name?: string;
+  grade?: string;
+  icon?: string;
+  enchantLevel?: number;
+  maxEnchantLevel?: number;
+  categoryName?: string;
+  mainStats?: { name?: string; value?: string; extra?: string }[];
+  subStats?: { name?: string; value?: string }[];
+  magicStoneStat?: { name?: string; value?: string; grade?: string }[];
+  godStoneStat?: { name?: string; desc?: string; grade?: string }[];
+  subSkills?: { name?: string; level?: number; icon?: string }[];
+  set?: {
+    name?: string;
+    equippedCount?: number;
+    items?: unknown[];
+    bonuses?: { degree?: number; descriptions?: string[] }[];
+  } | null;
 }
 
 interface NcItem {
@@ -195,6 +238,42 @@ function absolute(origin: string, url: string | undefined): string {
 
 const RACES: Record<number, string> = { 1: 'Elyos', 2: 'Asmodian' };
 
+// Only NC's own game-data CDN, so the browser never loads an image from a host NC's payload names
+const ncIcon = (url: unknown): string => (typeof url === 'string' && url.startsWith(NC_ICONS) ? url : '');
+const text = (value: unknown, max = 200): string => stripTags(value).slice(0, max);
+const list = <T>(value: T[] | null | undefined, max = 60): T[] => (Array.isArray(value) ? value.slice(0, max) : []);
+
+const PRIMARY_STATS = new Set(['STR', 'DEX', 'INT', 'CON', 'AGI', 'WIS']);
+const SKILL_GROUPS: Record<string, string> = { Active: 'active', Passive: 'passive', Dp: 'stigma' };
+
+function characterBody(data: NcCharacter, region: string) {
+  const profile = data.profile;
+  if (!profile?.characterName) return null;
+  const itemLevel = (data.stat?.statList || []).find((s) => s.type === 'ItemLevel')?.value ?? null;
+  return {
+    characterId: profile.characterId,
+    name: profile.characterName,
+    level: profile.characterLevel,
+    className: profile.className,
+    race: RACES[profile.raceId] || profile.raceName || '',
+    serverId: profile.serverId,
+    serverName: profile.serverName,
+    region,
+    combatPower: profile.combatPower ?? null,
+    itemLevel,
+    portrait: profile.profileImage || '',
+    title: profile.titleName ? { name: profile.titleName, grade: profile.titleGrade } : null,
+  };
+}
+
+function characterParams(query: URLSearchParams): { region: string; serverId: string; characterId: string } {
+  return {
+    region: requireRegion(query),
+    serverId: requireMatch(query, 'serverId', /^\d{4}$/, 'server'),
+    characterId: requireMatch(query, 'characterId', /^[A-Za-z0-9_\-=]{8,128}$/, 'character'),
+  };
+}
+
 function requireRegion(query: URLSearchParams): string {
   const region = query.get('region') ?? '';
   if (!REGIONS.has(region)) throw new BadRequest('Unknown region');
@@ -266,28 +345,100 @@ const routes: Record<string, Route> = {
   },
 
   async '/api/character'(query) {
-    const region = requireRegion(query);
-    const serverId = requireMatch(query, 'serverId', /^\d{4}$/, 'server');
-    const characterId = requireMatch(query, 'characterId', /^[A-Za-z0-9_\-=]{8,128}$/, 'character');
-    const data = await ncJSON<NcCharacter>(siteURL('/api/character/info', { region, serverId, characterId }), 10 * MINUTE);
-    const profile = data.profile;
-    if (!profile?.characterName) return { status: 404, body: { error: 'Character not found' } };
-    const itemLevel = (data.stat?.statList || []).find((s) => s.type === 'ItemLevel')?.value ?? null;
+    const params = characterParams(query);
+    const data = await ncJSON<NcCharacter>(siteURL('/api/character/info', params), 10 * MINUTE);
+    const body = characterBody(data, params.region);
+    if (!body) return { status: 404, body: { error: 'Character not found' } };
+    return { maxAge: 300, body };
+  },
+
+  // Everything the character window shows, in one round trip: profile and stats
+  // from NC's info, gear and skills from its equipment
+  async '/api/armory'(query) {
+    const params = characterParams(query);
+    const [info, gear] = await Promise.all([
+      ncJSON<NcCharacter>(siteURL('/api/character/info', params), 10 * MINUTE),
+      ncJSON<NcEquipment>(siteURL('/api/character/equipment', params), 10 * MINUTE),
+    ]);
+    const character = characterBody(info, params.region);
+    if (!character) return { status: 404, body: { error: 'Character not found' } };
+    const { pet, wing } = gear.petwing || {};
     return {
       maxAge: 300,
       body: {
-        characterId: profile.characterId,
-        name: profile.characterName,
-        level: profile.characterLevel,
-        className: profile.className,
-        race: RACES[profile.raceId] || profile.raceName || '',
-        serverId: profile.serverId,
-        serverName: profile.serverName,
-        region,
-        combatPower: profile.combatPower ?? null,
-        itemLevel,
-        portrait: profile.profileImage || '',
-        title: profile.titleName ? { name: profile.titleName, grade: profile.titleGrade } : null,
+        character,
+        stats: list(info.stat?.statList, 40)
+          .filter((s) => s.type !== 'ItemLevel')
+          .map((s) => {
+            // deity stats arrive as "Justice [Nezekan]"
+            const full = text(s.name, 60);
+            const [, name = full, god = ''] = full.match(/^(.*?)\s*\[(.+)\]$/) || [];
+            return {
+              name,
+              god,
+              group: PRIMARY_STATS.has(s.type) ? 'primary' : 'deity',
+              value: Number(s.value) || 0,
+              effects: list(s.statSecondList, 6).map((e) => text(e, 80)),
+            };
+          }),
+        gear: list(gear.equipment?.equipmentList, 40).map((g) => ({
+          slot: Number(g.slotPos) || 0,
+          slotName: text(g.slotPosName, 30),
+          id: Number(g.id) || 0,
+          name: text(g.name, 80),
+          grade: text(g.grade, 20),
+          icon: ncIcon(g.icon),
+          enchant: Number(g.enchantLevel) || 0,
+          exceed: Number(g.exceedLevel) || 0,
+        })),
+        wing: wing?.name ? { name: text(wing.name, 80), grade: text(wing.grade, 20), icon: ncIcon(wing.icon), enchant: Number(wing.enchantLevel) || 0 } : null,
+        pet: pet?.name ? { name: text(pet.name, 80), icon: ncIcon(pet.icon), level: Number(pet.level) || 0 } : null,
+        // NC lists every skill the class has; keep the ones this character learned
+        skills: list(gear.skill?.skillList, 120)
+          .filter((s) => s.acquired && SKILL_GROUPS[s.category ?? ''])
+          .map((s) => ({
+            name: text(s.name, 80),
+            icon: ncIcon(s.icon),
+            group: SKILL_GROUPS[s.category ?? ''],
+            level: Number(s.skillLevel) || 0,
+            equipped: Boolean(s.equip),
+          })),
+      },
+    };
+  },
+
+  // One equipped item in full: rolled stats, manastones, godstone, arcana skills and set
+  async '/api/armory/item'(query) {
+    const params = {
+      ...characterParams(query),
+      id: requireMatch(query, 'id', /^\d{6,10}$/, 'item'),
+      enchantLevel: requireMatch(query, 'enchantLevel', /^\d{1,2}$/, 'enchant level'),
+      slotPos: requireMatch(query, 'slotPos', /^\d{1,2}$/, 'slot'),
+    };
+    const data = await ncJSON<NcGearDetail>(siteURL('/api/character/equipment/item', params), 10 * MINUTE);
+    if (!data?.id) return { status: 404, body: { error: 'Item not found' } };
+    const set = data.set?.name ? data.set : null;
+    return {
+      maxAge: 300,
+      body: {
+        id: data.id,
+        name: text(data.name, 80),
+        grade: text(data.grade, 20),
+        icon: ncIcon(data.icon),
+        category: text(data.categoryName, 40),
+        enchant: Number(data.enchantLevel) || 0,
+        maxEnchant: Number(data.maxEnchantLevel) || 0,
+        mainStats: list(data.mainStats, 12).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20), extra: text(s.extra, 20) })),
+        subStats: list(data.subStats, 12).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20) })),
+        manastones: list(data.magicStoneStat, 8).map((s) => ({ name: text(s.name, 60), value: text(s.value, 20), grade: text(s.grade, 20) })),
+        godstones: list(data.godStoneStat, 4).map((s) => ({ name: text(s.name, 80), desc: text(s.desc, 600), grade: text(s.grade, 20) })),
+        subSkills: list(data.subSkills, 6).map((s) => ({ name: text(s.name, 80), level: Number(s.level) || 0, icon: ncIcon(s.icon) })),
+        set: set && {
+          name: text(set.name, 80),
+          equipped: Number(set.equippedCount) || 0,
+          total: list(set.items, 12).length,
+          bonuses: list(set.bonuses, 8).map((b) => ({ count: Number(b.degree) || 0, text: list(b.descriptions, 6).map((d) => text(d, 300)) })),
+        },
       },
     };
   },

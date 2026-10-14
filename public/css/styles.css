@@ -94,7 +94,7 @@ body {
 
 .topbar,
 .roster,
-.tabs,
+.tabbar,
 main,
 .footer {
   width: min(1200px, 100% - 32px);
@@ -590,10 +590,132 @@ textarea:focus {
 
 /* ---------- tabs ---------- */
 
+.tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
 .tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- character lookup ---------- */
+
+.lookup-slot {
+  width: min(380px, 100%);
+  margin-bottom: 6px;
+}
+
+.lookup {
+  position: relative;
+}
+
+.lookup-field {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.lookup-field:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent);
+}
+
+.lookup-field select,
+.lookup-field input {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+
+.lookup-field select {
+  flex: 0 0 auto;
+  padding: 0 4px 0 14px;
+  border-right: 1px solid var(--border);
+  border-radius: 999px 0 0 999px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lookup-field select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.lookup-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 14px 0 10px;
+}
+
+.lookup-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 15;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  scrollbar-width: thin;
+}
+
+.lookup-results[hidden] {
+  display: none;
+}
+
+.lookup-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lookup-row:hover,
+.lookup-row:focus-visible {
+  background: var(--surface-2);
+}
+
+.lookup-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lookup-name {
+  font-weight: 650;
+}
+
+.lookup-note {
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
 }
 
 .tabs [role="tab"] {
@@ -1448,6 +1570,441 @@ dialog::backdrop {
   outline-offset: 2px;
 }
 
+/* ---------- character window ---------- */
+
+dialog.armory {
+  width: min(980px, 100% - 24px);
+  height: min(780px, 100vh - 48px);
+  padding: 0;
+  overflow: hidden;
+}
+
+dialog.armory[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.armory-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.armory-head {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 20px 56px 14px 20px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+
+.armory-who {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.armory-who h2 {
+  font-size: 24px;
+}
+
+.armory-numbers {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.armory-numbers div {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.armory-numbers dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.armory-numbers dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.armory-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+}
+
+.armory-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+.armory-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.armory-tabs [role="tab"] {
+  position: relative;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.armory-tabs [role="tab"]:hover,
+.armory-tabs [role="tab"][aria-selected="true"] {
+  color: var(--text);
+}
+
+.armory-tabs [role="tab"][aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.armory-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 20px 20px;
+  scrollbar-width: thin;
+}
+
+.armory-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  text-align: center;
+}
+
+/* equipment */
+
+.gear {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+
+.gear-wide {
+  grid-column: 1 / -1;
+}
+
+.gear-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gear-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 4px;
+}
+
+.gear-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 8px 5px 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+}
+
+button.gear-slot {
+  cursor: pointer;
+}
+
+button.gear-slot:hover,
+button.gear-slot[aria-describedby] {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+.gear-icon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--tone, var(--border-strong)) 70%, transparent);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--tone, transparent) 22%, transparent), transparent 70%),
+    var(--surface-3);
+}
+
+.gear-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.gear-enchant {
+  position: absolute;
+  right: -4px;
+  bottom: -5px;
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gear-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gear-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gear-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gear-slot.is-empty {
+  opacity: 0.45;
+}
+
+.gear-slot.is-empty .gear-icon {
+  border-style: dashed;
+  background: none;
+}
+
+/* the hover card for one piece of gear */
+
+.gear-tip {
+  position: fixed;
+  z-index: 30;
+  width: min(310px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 92%, var(--surface));
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.gear-tip[hidden] {
+  display: none;
+}
+
+.tip-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tip-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tip-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.tip-title {
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tip-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tip-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tip-extra {
+  color: var(--done);
+}
+
+.tip-strong {
+  font-weight: 650;
+}
+
+.tip-desc {
+  margin-top: 2px;
+  color: var(--muted);
+  white-space: pre-line;
+}
+
+.tip-bonus {
+  display: flex;
+  gap: 8px;
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.tip-bonus.is-active {
+  color: var(--text);
+}
+
+.tip-count {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tip-bonus.is-active .tip-count {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+/* skills */
+
+.skills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 20px;
+}
+
+.skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 4px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.skill:hover {
+  background: var(--surface-2);
+}
+
+.skill img {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+
+.skill-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-level {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* stats */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.stat-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.stat-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stat-card-name {
+  font-weight: 650;
+}
+
+.stat-card-value {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-effects {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ---------- footer and toast ---------- */
 
 .footer {
@@ -1528,6 +2085,66 @@ dialog::backdrop {
 
   .timer {
     min-width: 0;
+  }
+
+  .lookup-slot {
+    order: -1;
+    width: 100%;
+    margin: 0 0 4px;
+  }
+
+  .timer {
+    padding: 6px 10px;
+  }
+
+  .timer-value {
+    white-space: nowrap;
+  }
+
+  /* long labels wrap here, so the sound toggle moves down beside the time */
+  .timer:has(.timer-sound) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 1fr auto;
+    align-items: end;
+    column-gap: 4px;
+  }
+
+  .timer:has(.timer-sound) .timer-label {
+    grid-column: 1 / -1;
+    align-self: start;
+    padding-right: 0;
+  }
+
+  .timer-sound {
+    position: static;
+    margin-bottom: 3px;
+  }
+
+  dialog.armory {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+
+  .armory-head {
+    padding: 14px 52px 14px 14px;
+  }
+
+  .armory-close {
+    top: 10px;
+    right: 10px;
+  }
+
+  .armory-panel {
+    padding: 4px 14px 16px;
+  }
+
+  .gear,
+  .skills {
+    grid-template-columns: 1fr;
   }
 
   .char {
