@@ -1931,7 +1931,22 @@ button.gear-slot[aria-describedby] {
 }
 
 .tip-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   color: var(--grade-epic);
+}
+
+.tip-skill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tip-skill img {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
 }
 
 .tip-strong {

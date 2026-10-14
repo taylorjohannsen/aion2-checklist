@@ -342,7 +342,12 @@ export function initCharacterWindow({ dialog, isTracked, track, onLoad, onClose 
       d?.godstones.map((g) => section(null,
         h('p', { class: `tip-strong ${gradeClass(g.grade)}` }, g.name),
         h('p', { class: 'tip-desc' }, g.desc))),
-      d && d.subSkills.length > 0 && section('Skills', h('div', { class: 'tip-skills' }, d.subSkills.map((s) => line(s.name, `Lv ${s.level}`)))),
+      d && d.subSkills.length > 0 && section('Skills', h('div', { class: 'tip-skills' }, d.subSkills.map((s) =>
+        h('div', { class: 'tip-line' },
+          h('span', { class: 'tip-skill' },
+            s.icon && h('img', { src: s.icon, alt: '', loading: 'lazy', decoding: 'async' }),
+            s.name),
+          h('span', { class: 'tip-value' }, `Lv ${s.level}`))))),
       set && section(`${set.name} · ${set.equipped}/${set.total}`,
         set.bonuses.map((b) => h('p', { class: `tip-bonus${b.count <= set.equipped ? ' is-active' : ''}` },
           h('span', { class: 'tip-count' }, String(b.count)),
