@@ -29,7 +29,6 @@ export const DEFAULT_TASKS: Task[] = [
   { id: 'odyle-craft', name: 'Odyle Craft', period: 'weekly', max: 20, icon: 'odyle-raw', note: 'Substance Morph' },
   { id: 'sub-shop', name: 'Odyle Sub Shop', period: 'weekly', max: 1, icon: 'odyle-small', note: 'Buy this week’s Odyle' },
   { id: 'pvp-command', name: 'PvP Command Quests', period: 'weekly', max: 20, icon: 'pvp', note: 'From the Abyss Command Merchant' },
-  { id: 'energy', name: 'Spend All Odyle Energy', period: 'weekly', max: 1, icon: 'odyle', note: 'Don’t go into reset at the cap' },
   { id: 'corridors', name: 'Abyss Corridors', period: 'siege', max: 1, icon: 'corridor', note: 'Open after your side wins an Artifact Siege' },
 ];
 
